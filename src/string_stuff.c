@@ -30,7 +30,11 @@ char **strsplit(const char* str, const char* delim, size_t* numtokens) {
 }
 
 int *to_int(char** strs, size_t number_strs) {
-	return NULL;
+	int* result = calloc(sizeof(int), number_strs);
+	for (size_t i = 0; i < number_strs; i++) {
+		result[i] = atoi(strs[i]);
+	}
+	return result;
 }
 bool contains(const char** list, size_t list_size, const char* needle) {
 	for (size_t l=0; l < list_size; l++) {
