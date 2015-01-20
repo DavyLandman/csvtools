@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <limits.h>     
+#include <stdbool.h>
+#include "string_stuff.h"
+#include "csv_stuff.h"
 
 #define BITMASK(b) (1 << ((b) % CHAR_BIT))
 #define BITSLOT(b) ((b) / CHAR_BIT)
@@ -17,6 +20,7 @@
 #define FREEARRAY(l,c) { for(int ___i = 0; ___i< c; ___i++) { free(l[___i]); } }
 
 typedef struct Context { 
+	int inside_full;
 	
 } Context;
 
@@ -36,17 +40,21 @@ typedef struct ProcessResult {
 	size_t buffer_read;
 } ProcessResult;
 
+static Configuration parse_config(int argc, char** argv);
+static ProcessResult parse_cells(void* buffer, size_t buffer_read, size_t already_processed, Cell* cells, size_t max_cells, Configuration* config, Context* context);
+static void output_cells(Cell* cells, int number_of_cells, Configuration* config, Context* context);
+
 int main(int argc, char** argv) {
-	Configuration config = parseConfig(argc, argv);
+	Configuration config = parse_config(argc, argv);
 	Context ctx;
 
-	void* buf = malloc(BUFSIZE);
-	Cell[] cells = calloc(sizeof(Cell), CELL_BUFER_SIZE);
+	void* buf = malloc(BUFFER_SIZE);
+	Cell* cells = calloc(sizeof(Cell), CELL_BUFFER_SIZE);
 	size_t chars_read;
-	while ((chars_read = fread(buf, 1, BUFSIZE, stdin)) > 0) {
+	while ((chars_read = fread(buf, 1, BUFFER_SIZE, stdin)) > 0) {
 		ProcessResult processed;
 		while (processed.buffer_read < chars_read) {
-			processed = parse_cells(buf, processed.buffer_read, chars_read, cells, &config, &ctx);
+			processed = parse_cells(buf, processed.buffer_read, chars_read, cells, CELL_BUFFER_SIZE, &config, &ctx);
 			output_cells(cells, processed.cells_read, &config, &ctx);
 		}
 	}
@@ -63,14 +71,32 @@ static void print_help() {
 	fprintf(stderr, "-D 0,1,3\n");
 	fprintf(stderr, "\tWhich columns to drop\n");
 }
-static Configuration parseConfig(int argc, char** argv) {
+
+static void print_header(const char ** columns, Configuration* config) {
+	bool first = true;
+	for (int c = 0; c < config->column_count; c++) {
+		if (BITSET(config->keep, c)) {
+			if (!first) {
+				fprintf(stdout, "%c", config->separator);
+			}
+			else {
+				first = false;
+			}
+			fprintf(stdout, "%s", columns[c]);
+		}
+	}
+	fprintf(stdout, "\n");
+}
+
+static Configuration parse_config(int argc, char** argv) {
 	Configuration config;
 	config.separator = ',';
-	int chops_size;
+	size_t chops_size;
 	char** keeps = NULL;
 	char** drops = NULL;
 	int* index_keeps = NULL;
 	int* index_drops = NULL;
+	char c;
 	while ((c = getopt (argc, argv, "skdKDh")) != -1) {
 		switch (c) {
 			case 's': 
@@ -81,14 +107,14 @@ static Configuration parseConfig(int argc, char** argv) {
 					fprintf(stderr, "Error, you can only pass one kind of chop option.\n");
 					abort();
 				}
-				chop_size = split(',' optarg, &keeps);
+				keeps = strsplit(optarg, ",", &chops_size);
 				break;
 			case 'd':
 				if (keeps || index_keeps || index_drops) {
 					fprintf(stderr, "Error, you can only pass one kind of chop option.\n");
 					abort();
 				}
-				chop_size = split(',' optarg, &drops);
+				drops = strsplit(optarg, ",", &chops_size);
 				break;
 			case 'K':
 				if (keeps || drops || index_drops) {
@@ -100,17 +126,14 @@ static Configuration parseConfig(int argc, char** argv) {
 					fprintf(stderr, "Error, you can only pass one kind of chop option.\n");
 					abort();
 				}
-				char** splitted;
-				chop_size = split(',' optarg, &splitted);
+				char** splitted = strsplit(optarg, ",", &chops_size);
 				if (c == 'K') {
-					to_int(splitted, &index_keeps, chop_size);
+					index_keeps = to_int(splitted, chops_size);
 				}
 				else {
-					to_int(splitted, &index_drops, chop_size);
+					index_drops = to_int(splitted, chops_size);
 				}
-				for (int i=0; i< chop_size; i++) {
-					free(splitted[i]);
-				}
+				FREEARRAY(splitted, chops_size);
 				free(splitted);
 				break;
 			case '?':
@@ -129,19 +152,19 @@ static Configuration parseConfig(int argc, char** argv) {
 	char* header = calloc(sizeof(char), BUFFER_SIZE);
 	if (fgets(header, BUFFER_SIZE, stdin) != NULL) {
 		char** columns;
-		config.column_count = parseHeader(header, BUFFER_SIZE, &fields, config.separator);
+		config.column_count = parse_header(header, BUFFER_SIZE, &columns, config.separator);
 		config.keep = calloc(sizeof(char),BITNSLOTS(config.column_count));
 		if (keeps || drops) {
 			char** chops = keeps ? keeps : drops;
 			for (int c = 0; c < config.column_count; c++) {
-				cont = contains(chops, chop_count, columns[c]);
+				bool cont = contains(chops, chops_size, columns[c]);
 				if ((cont && keeps) || (!cont && drops)) {
 					BITSET(config.keep, c);
 				}
 			}
 		}
 		else if (index_keeps) {
-			for (int i = 0; i < chop_size; i++) {
+			for (int i = 0; i < chops_size; i++) {
 				BITSET(config.keep, index_keeps[i]);
 			}
 		}
@@ -149,16 +172,16 @@ static Configuration parseConfig(int argc, char** argv) {
 			for (int c = 0; c < config.column_count; c++) {
 				BITSET(config.keep, c);
 			}
-			for (int i = 0; i < chop_size; i++) {
+			for (int i = 0; i < chops_size; i++) {
 				BITCLEAR(config.keep, index_drops[i]);
 			}
 		}
-		print_header(columns, config);
+		print_header(columns, &config);
 		if (keeps) {
-			FREEARRAY(keeps, chop_count);
+			FREEARRAY(keeps, chops_size);
 		}
 		else if (drops) {
-			FREEARRAY(drops, chop_count);
+			FREEARRAY(drops, chops_size);
 		}
 		else if (index_keeps) {
 			free(index_keeps);
@@ -177,3 +200,4 @@ static Configuration parseConfig(int argc, char** argv) {
 	}
 	return config;
 }
+
