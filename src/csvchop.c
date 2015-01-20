@@ -105,26 +105,26 @@ static Configuration parse_config(int argc, char** argv) {
 			case 'k':
 				if (drops || index_keeps || index_drops) {
 					fprintf(stderr, "Error, you can only pass one kind of chop option.\n");
-					abort();
+					exit(1);
 				}
 				keeps = strsplit(optarg, ",", &chops_size);
 				break;
 			case 'd':
 				if (keeps || index_keeps || index_drops) {
 					fprintf(stderr, "Error, you can only pass one kind of chop option.\n");
-					abort();
+					exit(1);
 				}
 				drops = strsplit(optarg, ",", &chops_size);
 				break;
 			case 'K':
 				if (keeps || drops || index_drops) {
 					fprintf(stderr, "Error, you can only pass one kind of chop option.\n");
-					abort();
+					exit(1);
 				}
 			case 'D':
 				if (keeps || drops || index_keeps) {
 					fprintf(stderr, "Error, you can only pass one kind of chop option.\n");
-					abort();
+					exit(1);
 				}
 				char** splitted = strsplit(optarg, ",", &chops_size);
 				if (c == 'K') {
@@ -139,7 +139,7 @@ static Configuration parse_config(int argc, char** argv) {
 			case '?':
 			case 'h':
 				print_help();
-				abort();
+				exit(1);
 				break;
 		}
 	}
@@ -147,7 +147,7 @@ static Configuration parse_config(int argc, char** argv) {
 	if (!(keeps || drops || index_keeps || index_drops)) {
 		fprintf(stderr, "You should describe how you want to chop the csv\n");
 		print_help();
-		abort();
+		exit(1);
 	}
 	char* header = calloc(sizeof(char), BUFFER_SIZE);
 	if (fgets(header, BUFFER_SIZE, stdin) != NULL) {
@@ -194,9 +194,9 @@ static Configuration parse_config(int argc, char** argv) {
 		free(header);
 	}
 	else {
-		fprint(stderr, "No valid header passed on stdin\n");
+		fprintf(stderr, "No valid header passed on stdin\n");
 		free(header);
-		abort();
+		exit(1);
 	}
 	return config;
 }

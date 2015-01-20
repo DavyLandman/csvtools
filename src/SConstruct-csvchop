@@ -3,7 +3,7 @@ import os
 sources = Split("""
 csvchop.c
 csv_stuff.c
-string_suff.c
+string_stuff.c
 """)
 
 env = Environment(ENV = {'PATH' : os.environ['PATH'],
