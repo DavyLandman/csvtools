@@ -7,6 +7,7 @@
 #include <assert.h>
 #include "string_stuff.h"
 #include "csv_stuff.h"
+#include "csvchop_shared.h"
 
 
 #define BITMASK(b) (1 << ((b) % CHAR_BIT))
@@ -21,26 +22,6 @@
 
 #define FREEARRAY(l,c) { for(size_t ___i = 0; ___i< c; ___i++) { free(l[___i]); } }
 
-typedef struct Context { 
-	int inside_full;
-	
-} Context;
-
-typedef struct Cell {
-	char* start;
-	int length;
-} Cell;
-
-typedef struct Configuration {
-	char* keep;
-	int column_count;
-	char separator;   
-} Configuration;
-
-typedef struct ProcessResult {
-	int cells_read;
-	size_t buffer_read;
-} ProcessResult;
 
 static Configuration parse_config(int argc, char** argv);
 static ProcessResult parse_cells(void* buffer, size_t buffer_read, size_t already_processed, Cell* cells, size_t max_cells, Configuration* config, Context* context);
