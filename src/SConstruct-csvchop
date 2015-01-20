@@ -1,0 +1,16 @@
+import os
+
+sources = Split("""
+csvchop.c
+csv_stuff.c
+string_suff.c
+""")
+
+env = Environment(ENV = {'PATH' : os.environ['PATH'],
+                         'TERM' : os.environ['TERM'],
+                         'HOME' : os.environ['HOME']})
+env.Append(CCFLAGS = ['-Wall', '-Wpedantic', '-Wextra','-g','-O3'])
+env.Append(LINKFLAGS = ['-Wl'])
+
+csvchop = env.Program(target='csvchop',source=env.Object(source = sources))
+Default(csvchop)
