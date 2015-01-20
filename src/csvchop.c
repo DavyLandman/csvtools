@@ -97,7 +97,7 @@ static Configuration parse_config(int argc, char** argv) {
 	int* index_keeps = NULL;
 	int* index_drops = NULL;
 	char c;
-	while ((c = getopt (argc, argv, "skdKDh")) != -1) {
+	while ((c = getopt (argc, argv, "s:k:d:K:D:h")) != -1) {
 		switch (c) {
 			case 's': 
 				config.separator = optarg[0];
