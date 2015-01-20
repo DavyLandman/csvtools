@@ -19,7 +19,7 @@
 #define BUFFER_SIZE 1024*1024
 #define CELL_BUFFER_SIZE BUFFER_SIZE / 4
 
-#define FREEARRAY(l,c) { for(int ___i = 0; ___i< c; ___i++) { free(l[___i]); } }
+#define FREEARRAY(l,c) { for(size_t ___i = 0; ___i< c; ___i++) { free(l[___i]); } }
 
 typedef struct Context { 
 	int inside_full;
@@ -158,7 +158,7 @@ static Configuration parse_config(int argc, char** argv) {
 		assert(columns != NULL);
 		config.keep = calloc(sizeof(char),BITNSLOTS(config.column_count));
 		if (keeps || drops) {
-			char** chops = keeps ? keeps : drops;
+			const char** chops = (const char**)(keeps ? keeps : drops);
 			for (int c = 0; c < config.column_count; c++) {
 				bool cont = contains(chops, chops_size, columns[c]);
 				if ((cont && keeps) || (!cont && drops)) {
@@ -167,7 +167,7 @@ static Configuration parse_config(int argc, char** argv) {
 			}
 		}
 		else if (index_keeps) {
-			for (int i = 0; i < chops_size; i++) {
+			for (size_t i = 0; i < chops_size; i++) {
 				BITSET(config.keep, index_keeps[i]);
 			}
 		}
@@ -175,11 +175,11 @@ static Configuration parse_config(int argc, char** argv) {
 			for (int c = 0; c < config.column_count; c++) {
 				BITSET(config.keep, c);
 			}
-			for (int i = 0; i < chops_size; i++) {
+			for (size_t i = 0; i < chops_size; i++) {
 				BITCLEAR(config.keep, index_drops[i]);
 			}
 		}
-		print_header(columns, &config);
+		print_header((const char**)columns, &config);
 		if (keeps) {
 			FREEARRAY(keeps, chops_size);
 		}
