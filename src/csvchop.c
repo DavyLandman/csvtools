@@ -5,8 +5,8 @@
 #include <limits.h>     
 #include <stdbool.h>
 #include <assert.h>
-#include "string_stuff.h"
-#include "csv_stuff.h"
+#include "string_utils.h"
+#include "csv_parsing.h"
 #include "csvchop_shared.h"
 
 
