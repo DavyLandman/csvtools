@@ -201,3 +201,11 @@ static Configuration parse_config(int argc, char** argv) {
 	return config;
 }
 
+static ProcessResult parse_cells(void* buffer, size_t buffer_read, size_t already_processed, Cell* cells, size_t max_cells, Configuration* config, Context* context) {
+	ProcessResult result;
+	return result;
+
+}
+static void output_cells(Cell* cells, int number_of_cells, Configuration* config, Context* context) {
+
+}

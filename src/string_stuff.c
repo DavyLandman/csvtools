@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdbool.h>
 #include "string_stuff.h"
 char **strsplit(const char* str, const char* delim, size_t* numtokens) {
     char *s = strdup(str);
@@ -27,3 +28,9 @@ char **strsplit(const char* str, const char* delim, size_t* numtokens) {
     return tokens;
 }
 
+int *to_int(char** strs, size_t number_strs) {
+	return NULL;
+}
+bool contains(const char** list, size_t list_size, const char* needle) {
+	return true;
+}
