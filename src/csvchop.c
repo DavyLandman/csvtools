@@ -77,7 +77,7 @@ static void print_help() {
 static void print_header(const char ** columns, Configuration* config) {
 	bool first = true;
 	for (int c = 0; c < config->column_count; c++) {
-		if (BITSET(config->keep, c)) {
+		if (BITTEST(config->keep, c)) {
 			if (!first) {
 				fprintf(stdout, "%c", config->separator);
 			}
