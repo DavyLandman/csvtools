@@ -4,8 +4,10 @@
 #include <unistd.h>
 #include <limits.h>     
 #include <stdbool.h>
+#include <assert.h>
 #include "string_stuff.h"
 #include "csv_stuff.h"
+
 
 #define BITMASK(b) (1 << ((b) % CHAR_BIT))
 #define BITSLOT(b) ((b) / CHAR_BIT)
@@ -153,6 +155,7 @@ static Configuration parse_config(int argc, char** argv) {
 	if (fgets(header, BUFFER_SIZE, stdin) != NULL) {
 		char** columns;
 		config.column_count = parse_header(header, BUFFER_SIZE, &columns, config.separator);
+		assert(columns != NULL);
 		config.keep = calloc(sizeof(char),BITNSLOTS(config.column_count));
 		if (keeps || drops) {
 			char** chops = keeps ? keeps : drops;
@@ -189,7 +192,6 @@ static Configuration parse_config(int argc, char** argv) {
 		else if (index_drops) {
 			free(index_drops);
 		}
-		FREEARRAY(columns, config.column_count);
 		free(columns);
 		free(header);
 	}
