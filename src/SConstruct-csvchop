@@ -5,12 +5,16 @@ csvchop.c
 csv_parsing.c
 string_utils.c
 """)
+mode = ARGUMENTS.get('mode', 'release')
 
 env = Environment(ENV = {'PATH' : os.environ['PATH'],
                          'TERM' : os.environ['TERM'],
                          'HOME' : os.environ['HOME']})
 env.Append(CCFLAGS = ['-Wall', '-Wpedantic', '-Wextra','-g','-O3'])
 env.Append(LINKFLAGS = ['-Wl'])
+if mode == 'debug':
+  env.Append(CPPDEFINES={'DEBUG' : '1'})
+	
 
 csvchop = env.Program(target='csvchop',source=env.Object(source = sources))
 Default(csvchop)

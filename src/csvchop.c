@@ -52,6 +52,9 @@ int main(int argc, char** argv) {
 	bool first = true;
 
 	while ((chars_read = fread(buf, 1, BUFFER_SIZE, stdin)) > 0) {
+#ifdef DEBUG
+		fprintf(stderr, "New data read: %zu\n", chars_read);
+#endif
 		ProcessResult processed;
 		if (first) {
 			// first let's read the config
