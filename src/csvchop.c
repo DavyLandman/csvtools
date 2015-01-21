@@ -56,6 +56,8 @@ int main(int argc, char** argv) {
 		fprintf(stderr, "New data read: %zu\n", chars_read);
 #endif
 		ProcessResult processed;
+		processed.buffer_read = 0;
+		processed.cells_read = 0;
 		if (first) {
 			// first let's read the config
 			processed.buffer_read = parse_config(argc, argv, buf, chars_read, &config);
