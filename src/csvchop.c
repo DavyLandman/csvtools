@@ -19,6 +19,7 @@
 #define BITNSLOTS(nb) ((nb + CHAR_BIT - 1) / CHAR_BIT)
 
 #define BUFFER_SIZE 1024*1024
+//#define BUFFER_SIZE 20
 #define CELL_BUFFER_SIZE BUFFER_SIZE / 4
 
 #define FREEARRAY(l,c) { for(size_t ___i = 0; ___i< c; ___i++) { free(l[___i]); } }
@@ -26,15 +27,20 @@
 Context setup_context() {
 	Context ctx;
 	ctx.in_quote = false;
-	ctx.in_newline = false;
 	ctx.next_cell = true;
+	ctx.prev_newline = false;
 	ctx.prev_quote = false;
 	ctx.current_cell_id = 0;
+	ctx.last_full = true;
+	ctx.half_printed = false;
 	return ctx;
 }
 
 static size_t parse_config(int argc, char** argv, char* buffer, size_t chars_read, Configuration* config);
 static void output_cells(Cell* cells, int number_of_cells, Configuration* config, Context* context);
+#ifdef DEBUG
+static void print_cells(Cell* cells, size_t total);
+#endif
 
 int main(int argc, char** argv) {
 	Context ctx = setup_context();
@@ -51,16 +57,39 @@ int main(int argc, char** argv) {
 			// first let's read the config
 			processed.buffer_read = parse_config(argc, argv, buf, chars_read, &config);
 			first = false;
+#ifdef DEBUG
+			fprintf(stderr, "Processed: %zu, (%zu) Cells: %d\n", processed.buffer_read, chars_read, processed.cells_read);
+#endif
 		}
-			//fprintf(stderr, "Processed: %zu, (%zu) Cells: %d\n", processed.buffer_read, chars_read, processed.cells_read);
 		while (processed.buffer_read < chars_read) {
 			processed = parse_cells(buf, chars_read, processed.buffer_read , cells, CELL_BUFFER_SIZE, &config, &ctx);
-			//fprintf(stderr, "Processed: %zu, Cells: %d\n", processed.buffer_read, processed.cells_read);
+#ifdef DEBUG
+			fprintf(stderr, "Processed: %zu, Cells: %d\n", processed.buffer_read, processed.cells_read);
+			print_cells(cells,processed.cells_read);
+#endif
 			output_cells(cells, processed.cells_read, &config, &ctx);
 		}
 	}
 	return 0;
 }
+
+#ifdef DEBUG
+static void print_cells(Cell* cells, size_t total) {
+	for (size_t c = 0; c < total; c++) {
+		if (cells[c].start == NULL) {
+			fprintf(stderr, "Cell %zu : Newline\n", c);
+		}
+		else {
+			char* s = calloc(sizeof(char), cells[c].length+1);
+			s[cells[c].length] = '\0';
+			memcpy(s, cells[c].start, cells[c].length);
+			fprintf(stderr, "Cell %zu : %s\n", c, s);
+			free(s);
+		}
+
+	}
+}
+#endif
 
 static void print_help() {
 	fprintf(stderr, "-s ,\n");
@@ -210,17 +239,25 @@ static void output_cells(Cell* cells, int number_of_cells, Configuration* config
 				context->current_cell_id = -1;
 			}
 			else {
-				fprintf(stderr, "Not enough cells in this row, expect: %d, got: %d\n", config->column_count + 1, context->current_cell_id);
+				fprintf(stderr, "Not enough cells in this row, expect: %d, got: %d\n", config->column_count, context->current_cell_id);
 				exit(1);
 			}
 		}
 		else if (BITTEST(config->keep, context->current_cell_id)) {
-			if (context->current_cell_id != config->first_cell) {
-				fwrite(&(config->separator),sizeof(char),1, stdout);
+			if (c != number_of_cells - 1 || !context->half_printed) {
+				if (context->current_cell_id != config->first_cell) {
+					fwrite(&(config->separator),sizeof(char),1, stdout);
+				}
 			}
-			//fprintf(stderr, "%p %zu\n", cells[c].start, cells[c].length);
 			fwrite(cells[c].start, sizeof(char), cells[c].length, stdout);
 		}
 		context->current_cell_id++;
+	}
+	if (context->last_full) {
+		context->half_printed = true;
+		context->current_cell_id--;
+	}
+	else {
+		context->half_printed = false;
 	}
 }
