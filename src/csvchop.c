@@ -25,6 +25,7 @@
 
 static Configuration parse_config(int argc, char** argv);
 static void output_cells(Cell* cells, int number_of_cells, Configuration* config, Context* context);
+
 int main(int argc, char** argv) {
 	Configuration config = parse_config(argc, argv);
 	Context ctx;
