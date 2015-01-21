@@ -249,7 +249,7 @@ static void output_cells(Cell* cells, int number_of_cells, Configuration* config
 			}
 		}
 		else if (BITTEST(config->keep, context->current_cell_id)) {
-			if (c != number_of_cells - 1 || !context->half_printed) {
+			if (c != 0 || !context->half_printed) {
 				if (context->current_cell_id != config->first_cell) {
 					fwrite(&(config->separator),sizeof(char),1, stdout);
 				}
@@ -258,7 +258,7 @@ static void output_cells(Cell* cells, int number_of_cells, Configuration* config
 		}
 		context->current_cell_id++;
 	}
-	if (context->last_full) {
+	if (!context->last_full) {
 		context->half_printed = true;
 		context->current_cell_id--;
 	}
