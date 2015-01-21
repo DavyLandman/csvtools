@@ -5,6 +5,7 @@
 #include <limits.h>     
 #include <stdbool.h>
 #include <assert.h>
+#include <string.h>
 #include "string_utils.h"
 #include "csv_parsing.h"
 #include "csvchop_shared.h"
@@ -22,21 +23,39 @@
 
 #define FREEARRAY(l,c) { for(size_t ___i = 0; ___i< c; ___i++) { free(l[___i]); } }
 
+Context setup_context() {
+	Context ctx;
+	ctx.in_quote = false;
+	ctx.in_newline = false;
+	ctx.next_cell = true;
+	ctx.prev_quote = false;
+	ctx.current_cell_id = 0;
+	return ctx;
+}
 
-static Configuration parse_config(int argc, char** argv);
+static size_t parse_config(int argc, char** argv, char* buffer, size_t chars_read, Configuration* config);
 static void output_cells(Cell* cells, int number_of_cells, Configuration* config, Context* context);
 
 int main(int argc, char** argv) {
-	Configuration config = parse_config(argc, argv);
-	Context ctx;
+	Context ctx = setup_context();
+	Configuration config;
 
 	void* buf = malloc(BUFFER_SIZE);
 	Cell* cells = calloc(sizeof(Cell), CELL_BUFFER_SIZE);
 	size_t chars_read;
+	bool first = true;
+
 	while ((chars_read = fread(buf, 1, BUFFER_SIZE, stdin)) > 0) {
 		ProcessResult processed;
+		if (first) {
+			// first let's read the config
+			processed.buffer_read = parse_config(argc, argv, buf, chars_read, &config);
+			first = false;
+		}
+			//fprintf(stderr, "Processed: %zu, (%zu) Cells: %d\n", processed.buffer_read, chars_read, processed.cells_read);
 		while (processed.buffer_read < chars_read) {
-			processed = parse_cells(buf, processed.buffer_read, chars_read, cells, CELL_BUFFER_SIZE, &config, &ctx);
+			processed = parse_cells(buf, chars_read, processed.buffer_read , cells, CELL_BUFFER_SIZE, &config, &ctx);
+			//fprintf(stderr, "Processed: %zu, Cells: %d\n", processed.buffer_read, processed.cells_read);
 			output_cells(cells, processed.cells_read, &config, &ctx);
 		}
 	}
@@ -70,9 +89,8 @@ static void print_header(const char ** columns, Configuration* config) {
 	fprintf(stdout, "\n");
 }
 
-static Configuration parse_config(int argc, char** argv) {
-	Configuration config;
-	config.separator = ',';
+static size_t parse_config(int argc, char** argv, char * buffer, size_t chars_read, Configuration* config) {
+	config->separator = ',';
 	size_t chops_size;
 	char** keeps = NULL;
 	char** drops = NULL;
@@ -82,7 +100,7 @@ static Configuration parse_config(int argc, char** argv) {
 	while ((c = getopt (argc, argv, "s:k:d:K:D:h")) != -1) {
 		switch (c) {
 			case 's': 
-				config.separator = optarg[0];
+				config->separator = optarg[0];
 				break;
 			case 'k':
 				if (drops || index_keeps || index_drops) {
@@ -131,58 +149,78 @@ static Configuration parse_config(int argc, char** argv) {
 		print_help();
 		exit(1);
 	}
-	char* header = calloc(sizeof(char), BUFFER_SIZE);
-	if (fgets(header, BUFFER_SIZE, stdin) != NULL) {
-		char** columns;
-		config.column_count = parse_header(header, BUFFER_SIZE, &columns, config.separator);
-		assert(columns != NULL);
-		config.keep = calloc(sizeof(char),BITNSLOTS(config.column_count));
-		if (keeps || drops) {
-			const char** chops = (const char**)(keeps ? keeps : drops);
-			for (int c = 0; c < config.column_count; c++) {
-				bool cont = contains(chops, chops_size, columns[c]);
-				if ((cont && keeps) || (!cont && drops)) {
-					BITSET(config.keep, c);
-				}
+
+	size_t result;
+	char** columns;
+	config->newline = calloc(sizeof(char), 2);
+	config->column_count = parse_header(buffer, chars_read, config->newline, &(config->newline_length), &result,  &columns, config->separator);
+	assert(columns != NULL);
+	config->keep = calloc(sizeof(char),BITNSLOTS(config->column_count + 1));
+	memset(config->keep, 0, BITNSLOTS(config->column_count + 1));
+	if (keeps || drops) {
+		const char** chops = (const char**)(keeps ? keeps : drops);
+		for (int c = 0; c < config->column_count; c++) {
+			bool cont = contains(chops, chops_size, columns[c]);
+			if ((cont && keeps) || (!cont && drops)) {
+				BITSET(config->keep, c);
 			}
 		}
-		else if (index_keeps) {
-			for (size_t i = 0; i < chops_size; i++) {
-				BITSET(config.keep, index_keeps[i]);
-			}
-		}
-		else if (index_drops) {
-			for (int c = 0; c < config.column_count; c++) {
-				BITSET(config.keep, c);
-			}
-			for (size_t i = 0; i < chops_size; i++) {
-				BITCLEAR(config.keep, index_drops[i]);
-			}
-		}
-		print_header((const char**)columns, &config);
-		if (keeps) {
-			FREEARRAY(keeps, chops_size);
-		}
-		else if (drops) {
-			FREEARRAY(drops, chops_size);
-		}
-		else if (index_keeps) {
-			free(index_keeps);
-		}
-		else if (index_drops) {
-			free(index_drops);
-		}
-		free(columns);
-		free(header);
 	}
-	else {
-		fprintf(stderr, "No valid header passed on stdin\n");
-		free(header);
-		exit(1);
+	else if (index_keeps) {
+		for (size_t i = 0; i < chops_size; i++) {
+			BITSET(config->keep, index_keeps[i]);
+		}
 	}
-	return config;
+	else if (index_drops) {
+		for (int c = 0; c < config->column_count; c++) {
+			BITSET(config->keep, c);
+		}
+		for (size_t i = 0; i < chops_size; i++) {
+			BITCLEAR(config->keep, index_drops[i]);
+		}
+	}
+	for (int c = 0; c < config->column_count; c++) {
+		if (BITTEST(config->keep, c)) {
+			config->first_cell = c;
+			break;
+		}
+	}
+	print_header((const char**)columns, config);
+	if (keeps) {
+		FREEARRAY(keeps, chops_size);
+	}
+	else if (drops) {
+		FREEARRAY(drops, chops_size);
+	}
+	else if (index_keeps) {
+		free(index_keeps);
+	}
+	else if (index_drops) {
+		free(index_drops);
+	}
+	free(columns);
+	return result;
 }
 
 static void output_cells(Cell* cells, int number_of_cells, Configuration* config, Context* context) {
-
+	for (int c = 0; c < number_of_cells; c++) {
+		if (cells[c].start == NULL) {
+			if (context->current_cell_id == (config->column_count)) {
+				fwrite(config->newline, sizeof(char), config->newline_length, stdout);
+				context->current_cell_id = -1;
+			}
+			else {
+				fprintf(stderr, "Not enough cells in this row, expect: %d, got: %d\n", config->column_count + 1, context->current_cell_id);
+				exit(1);
+			}
+		}
+		else if (BITTEST(config->keep, context->current_cell_id)) {
+			if (context->current_cell_id != config->first_cell) {
+				fwrite(&(config->separator),sizeof(char),1, stdout);
+			}
+			//fprintf(stderr, "%p %zu\n", cells[c].start, cells[c].length);
+			fwrite(cells[c].start, sizeof(char), cells[c].length, stdout);
+		}
+		context->current_cell_id++;
+	}
 }
