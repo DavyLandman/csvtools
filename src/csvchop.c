@@ -38,7 +38,7 @@ Context setup_context() {
 
 static size_t parse_config(int argc, char** argv, char* buffer, size_t chars_read, Configuration* config);
 static void output_cells(Cell* cells, int number_of_cells, Configuration* config, Context* context);
-#ifdef DEBUG
+#ifdef MOREDEBUG
 static void print_cells(Cell* cells, size_t total);
 #endif
 
@@ -70,6 +70,8 @@ int main(int argc, char** argv) {
 			processed = parse_cells(buf, chars_read, processed.buffer_read , cells, CELL_BUFFER_SIZE, &config, &ctx);
 #ifdef DEBUG
 			fprintf(stderr, "Processed: %zu, Cells: %d\n", processed.buffer_read, processed.cells_read);
+#endif
+#ifdef MOREDEBUG
 			print_cells(cells,processed.cells_read);
 #endif
 			output_cells(cells, processed.cells_read, &config, &ctx);
@@ -78,7 +80,7 @@ int main(int argc, char** argv) {
 	return 0;
 }
 
-#ifdef DEBUG
+#ifdef MOREDEBUG
 static void print_cells(Cell* cells, size_t total) {
 	for (size_t c = 0; c < total; c++) {
 		if (cells[c].start == NULL) {
