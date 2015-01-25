@@ -61,16 +61,13 @@ int main(int argc, char** argv) {
 		if (first) {
 			first = true;
 			buffer_consumed = parse_config(argc, argv, chars_read);
-#ifdef DEBUG
-			fprintf(stderr, "Processed: %zu", buffer_consumed);
-#endif
 		}
 
 		while (buffer_consumed < chars_read) {
 			parse_cells(buffer_consumed, chars_read, &buffer_consumed, &cells_found, &last_full);
 
 #ifdef DEBUG
-			fprintf(stderr, "Processed: %zu, Cells: %d\n", buffer_consumed, cells_found);
+			fprintf(stderr, "Processed: %zu, Cells: %zu\n", buffer_consumed, cells_found);
 #endif
 #ifdef MOREDEBUG
 			print_cells(cells_found);
@@ -176,12 +173,22 @@ static size_t parse_config(int argc, char** argv, size_t chars_read) {
 		exit(1);
 	}
 
+#ifdef DEBUG
+	fprintf(stderr, "Done parsing config params\n");	
+#endif 
 
 	setup_parser(_separator, _buffer, _cell_starts, _cell_lengths, CELL_BUFFER_SIZE);
 
 	size_t consumed, cells_found;
 	bool last_full;
 	parse_cells(0, chars_read, &consumed, &cells_found, &last_full);
+
+#ifdef DEBUG
+	fprintf(stderr, "Processed: %zu, Cells: %zu\n", consumed, cells_found);
+#endif
+#ifdef MOREDEBUG
+	print_cells(cells_found);
+#endif
 
 	char const** current_cell = _cell_starts;
 	while (current_cell < (_cell_starts + cells_found) && *current_cell != NULL) {
