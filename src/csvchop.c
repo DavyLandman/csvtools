@@ -8,7 +8,6 @@
 #include <string.h>
 #include "string_utils.h"
 #include "csv_parsing.h"
-#include "csvchop_shared.h"
 
 
 #define BITMASK(b) (1 << ((b) % CHAR_BIT))
