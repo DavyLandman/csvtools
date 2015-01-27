@@ -18,6 +18,11 @@ if mode == 'debug':
   CCFlags.append('-g')
   if verbose > 0:
     env.Append(CPPDEFINES={'MOREDEBUG' : '1'})
+else if mode == 'profile':
+  CCFlags.append('-g')
+  CCFlags.append('-pg')
+  CCFlags.append('-O3')
+  env.Append(LINKFLAGS = ['-pg'])
 else:
   CCFlags.append('-O3')
 
