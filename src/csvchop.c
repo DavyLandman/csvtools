@@ -38,6 +38,7 @@
 	#define LOG_V(fmt, ...) 
 #endif
 
+struct csv_parser* _parser;
 
 static char _buffer[BUFFER_SIZE];
 static char const* _cell_starts[CELL_BUFFER_SIZE];
@@ -76,7 +77,7 @@ int main(int argc, char** argv) {
 		}
 
 		while (buffer_consumed < chars_read) {
-			parse_cells(buffer_consumed, chars_read, &buffer_consumed, &cells_found, &last_full);
+			parse_cells(_parser, buffer_consumed, chars_read, &buffer_consumed, &cells_found, &last_full);
 
 			LOG_D("Processed: %zu, Cells: %zu\n", buffer_consumed, cells_found);
 			debug_cells(cells_found);
@@ -185,11 +186,11 @@ static size_t parse_config(int argc, char** argv, size_t chars_read) {
 
 	LOG_D("%s\n","Done parsing config params");	
 
-	setup_parser(_separator, _buffer, _cell_starts, _cell_lengths, CELL_BUFFER_SIZE);
+	_parser = setup_parser(_separator, _buffer, _cell_starts, _cell_lengths, CELL_BUFFER_SIZE);
 
 	size_t consumed, cells_found;
 	bool last_full;
-	parse_cells(0, chars_read, &consumed, &cells_found, &last_full);
+	parse_cells(_parser, 0, chars_read, &consumed, &cells_found, &last_full);
 
 	LOG_D("Processed: %zu, Cells: %zu\n", consumed, cells_found);
 	debug_cells(cells_found);
