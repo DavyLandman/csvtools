@@ -84,6 +84,12 @@ int main(int argc, char** argv) {
 			output_cells(cells_found, last_full);
 		}
 	}
+	if (_parser != NULL) {
+		free(_parser);
+	}
+	if (_keep != NULL) {
+		free(_keep);
+	}
 	return 0;
 }
 
