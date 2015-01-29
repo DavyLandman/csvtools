@@ -268,7 +268,7 @@ static size_t parse_config(int argc, char** argv, size_t chars_read) {
 
 static void output_cells(size_t cells_found, bool last_full) {
 	LOG_D("Starting output: %zu (%d)\n", cells_found, last_full);
-	LOG_V("Entry: current_cell: %ld\n", _current_cell_id);
+	LOG_V("Entry: current_cell: %d\n", _current_cell_id);
 	char const ** current_cell_start = _cell_starts;
 	char const ** cell_starts_end = _cell_starts + cells_found;
 	size_t* current_cell_length = _cell_lengths;
@@ -309,5 +309,5 @@ static void output_cells(size_t cells_found, bool last_full) {
 	else {
 		_half_printed = false;
 	}
-	LOG_V("Exit: current_cell: %ld\n", _current_cell_id);
+	LOG_V("Exit: current_cell: %d\n", _current_cell_id);
 }
