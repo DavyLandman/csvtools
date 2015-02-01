@@ -102,6 +102,9 @@ static void debug_cells(size_t total) {
 		if (*current_cell_start == NULL) {
 			LOG_V("Cell %zu : Newline\n", (size_t)(current_cell_start - _cell_starts));
 		}
+		else if (*current_cell_length == 0) {
+			LOG_V("Cell %zu : \n", (size_t)(current_cell_start - _cell_starts));
+		}
 		else {
 			char* s = calloc(sizeof(char), *current_cell_length);
 			s[*current_cell_length + 1] = '\0';
