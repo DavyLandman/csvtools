@@ -277,8 +277,7 @@ static void output_cells(size_t cells_found, bool last_full) {
 	size_t* current_cell_length = _cell_lengths;
 	while (current_cell_start < cell_starts_end) {
 		if (_current_cell_id > _column_count) {
-			LOG_V("Record: %zu\n", (size_t)(current_cell_start - _cell_starts));
-			fprintf(stderr, "Too many cells in this row, expect: %d, got: %d\n", _column_count, _current_cell_id);
+			fprintf(stderr, "Too many cells in this row, expect: %d, got: %d (cell: %zu)\n", _column_count, _current_cell_id, (size_t)(current_cell_start - _cell_starts));
 			exit(1);
 			return;
 		}
@@ -288,7 +287,7 @@ static void output_cells(size_t cells_found, bool last_full) {
 				_current_cell_id = -1;
 			}
 			else if (_current_cell_id < _column_count) {
-				fprintf(stderr, "Not enough cells in this row, expect: %d, got: %d\n", _column_count, _current_cell_id);
+				fprintf(stderr, "Not enough cells in this row, expect: %d, got: %d (cell %zu)\n", _column_count, _current_cell_id,  (size_t)(current_cell_start - _cell_starts));
 				exit(1);
 				return;
 			}
