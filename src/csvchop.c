@@ -106,8 +106,8 @@ static void debug_cells(size_t total) {
 			LOG_V("Cell %zu : \n", (size_t)(current_cell_start - _cell_starts));
 		}
 		else {
-			char* s = calloc(sizeof(char), *current_cell_length);
-			s[*current_cell_length + 1] = '\0';
+			char* s = calloc(sizeof(char), *current_cell_length + 1);
+			s[*current_cell_length] = '\0';
 			memcpy(s, *current_cell_start, *current_cell_length);
 			LOG_V("Cell %zu : %s\n", (size_t)(current_cell_start - _cell_starts), s);
 			free(s);
