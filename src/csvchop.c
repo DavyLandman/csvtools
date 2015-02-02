@@ -277,6 +277,7 @@ static void output_cells(size_t cells_found, bool last_full) {
 	size_t* current_cell_length = _cell_lengths;
 	while (current_cell_start < cell_starts_end) {
 		if (_current_cell_id > _column_count) {
+			LOG_V("Record: %zu\n", (size_t)(current_cell_start - _cell_starts));
 			fprintf(stderr, "Too many cells in this row, expect: %d, got: %d\n", _column_count, _current_cell_id);
 			exit(1);
 			return;
