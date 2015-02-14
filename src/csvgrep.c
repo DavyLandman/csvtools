@@ -269,6 +269,9 @@ static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 		}
 		else if (matches) { // only if we have a match does it make sense to test other cells
 			current_line_length += 1 + *current_cell_length;
+			if (_current_cell_id == 0) {
+				current_line_length--; // the first doesn't have a separator
+			}
 			if (_patterns[_current_cell_id] != NULL) {
 				char * cell = (char*)*current_cell_start;
 				size_t length = *current_cell_length;
