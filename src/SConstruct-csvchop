@@ -2,7 +2,7 @@ import os
 
 sources = Split("""
 csvchop.c
-csv_parsing.c
+../common/csv_tokenizer.c
 string_utils.c
 """)
 mode = ARGUMENTS.get('mode', 'release')
@@ -11,6 +11,7 @@ verbose = ARGUMENTS.get('verbose', 0)
 env = Environment(ENV = {'PATH' : os.environ['PATH'],
                          'TERM' : os.environ['TERM'],
                          'HOME' : os.environ['HOME']})
+env.Append(CPPPATH = ['../common/'])
 CCFlags = ['-std=gnu99','-Wall', '-Wpedantic', '-Wextra']
 #env.Append(LINKFLAGS = ['-Wl'])
 if mode == 'debug':

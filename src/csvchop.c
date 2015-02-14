@@ -7,7 +7,7 @@
 #include <assert.h>
 #include <string.h>
 #include "string_utils.h"
-#include "csv_parsing.h"
+#include "csv_tokenizer.h"
 #include "debug.h"
 
 
@@ -25,7 +25,7 @@
 #define FREEARRAY(l,c) { for(size_t ___i = 0; ___i< c; ___i++) { free(l[___i]); } }
 
 
-struct csv_parser* _parser;
+struct csv_tokenizer* _tokenizer;
 
 static char _buffer[BUFFER_SIZE];
 static char const* _cell_starts[CELL_BUFFER_SIZE];
@@ -64,15 +64,15 @@ int main(int argc, char** argv) {
 		}
 
 		while (buffer_consumed < chars_read) {
-			parse_cells(_parser, buffer_consumed, chars_read, &buffer_consumed, &cells_found, &last_full);
+			tokenize_cells(_tokenizer, buffer_consumed, chars_read, &buffer_consumed, &cells_found, &last_full);
 
 			LOG_D("Processed: %zu, Cells: %zu\n", buffer_consumed, cells_found);
 			debug_cells(cells_found);
 			output_cells(cells_found, last_full);
 		}
 	}
-	if (_parser != NULL) {
-		free(_parser);
+	if (_tokenizer != NULL) {
+		free(_tokenizer);
 	}
 	if (_keep != NULL) {
 		free(_keep);
@@ -182,11 +182,11 @@ static size_t parse_config(int argc, char** argv, size_t chars_read) {
 
 	LOG_D("%s\n","Done parsing config params");	
 
-	_parser = setup_parser(_separator, _buffer, _cell_starts, _cell_lengths, CELL_BUFFER_SIZE);
+	_tokenizer = setup_tokenizer(_separator, _buffer, _cell_starts, _cell_lengths, CELL_BUFFER_SIZE);
 
 	size_t consumed, cells_found;
 	bool last_full;
-	parse_cells(_parser, 0, chars_read, &consumed, &cells_found, &last_full);
+	tokenize_cells(_tokenizer, 0, chars_read, &consumed, &cells_found, &last_full);
 
 	LOG_D("Processed: %zu, Cells: %zu\n", consumed, cells_found);
 	debug_cells(cells_found);
