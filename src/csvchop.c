@@ -10,14 +10,6 @@
 #include "csv_tokenizer.h"
 #include "debug.h"
 
-
-#define BITMASK(b) (1 << ((b) % CHAR_BIT))
-#define BITSLOT(b) ((b) / CHAR_BIT)
-#define BITSET(a, b) ((a)[BITSLOT(b)] |= BITMASK(b))
-#define BITCLEAR(a, b) ((a)[BITSLOT(b)] &= ~BITMASK(b))
-#define BITTEST(a, b) ((a)[BITSLOT(b)] & BITMASK(b))
-#define BITNSLOTS(nb) ((nb + CHAR_BIT - 1) / CHAR_BIT)
-
 #define BUFFER_SIZE 1024*1024
 //#define BUFFER_SIZE 30
 #define CELL_BUFFER_SIZE BUFFER_SIZE / 4
@@ -37,7 +29,7 @@ static int _current_cell_id = 0;
 static char _separator = ',';
 static char _newline[2];
 static size_t _newline_length = 0;
-static char* _keep;
+static bool* _keep = NULL;
 static int _first_cell = 0;
 static bool _half_printed = false;
 
@@ -205,33 +197,35 @@ static size_t parse_config(int argc, char** argv, size_t chars_read) {
 		_newline_length = 2;
 	}
 
-	_keep = calloc(sizeof(char),BITNSLOTS(_column_count + 1));
-	memset(_keep, 0, BITNSLOTS(_column_count + 1));
+	_keep = calloc(sizeof(bool),_column_count);
+	for (int c = 0; c < _column_count; c++) {
+		_keep[c] =  false;
+	}
 
 	if (keeps || drops) {
 		const char** chops = (const char**)(keeps ? keeps : drops);
 		for (int c = 0; c < _column_count; c++) {
 			bool cont = contains_n(chops, chops_size, _cell_starts[c], _cell_lengths[c]);
 			if ((cont && keeps) || (!cont && drops)) {
-				BITSET(_keep, c);
+				_keep[c] = true;
 			}
 		}
 	}
 	else if (index_keeps) {
 		for (size_t i = 0; i < chops_size; i++) {
-			BITSET(_keep, index_keeps[i]);
+			_keep[index_keeps[i]] = true;
 		}
 	}
 	else if (index_drops) {
 		for (int c = 0; c < _column_count; c++) {
-			BITSET(_keep, c);
+			_keep[c] = true;
 		}
 		for (size_t i = 0; i < chops_size; i++) {
-			BITCLEAR(_keep, index_drops[i]);
+			_keep[index_drops[i]] = false;
 		}
 	}
 	for (int c = 0; c < _column_count; c++) {
-		if (BITTEST(_keep, c)) {
+		if (_keep[c]) {
 			_first_cell = c;
 			break;
 		}
@@ -280,7 +274,7 @@ static void output_cells(size_t cells_found, bool last_full) {
 				return;
 			}
 		}
-		else if (BITTEST(_keep, _current_cell_id)) {
+		else if (_keep[_current_cell_id]) {
 			if (current_cell_start != _cell_starts || !_half_printed) {
 				if (_current_cell_id != _first_cell) {
 					fwrite(&(_separator),sizeof(char),1, stdout);
