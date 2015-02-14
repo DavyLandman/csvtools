@@ -8,6 +8,7 @@
 #include <string.h>
 #include "string_utils.h"
 #include "csv_parsing.h"
+#include "debug.h"
 
 
 #define BITMASK(b) (1 << ((b) % CHAR_BIT))
@@ -23,19 +24,6 @@
 
 #define FREEARRAY(l,c) { for(size_t ___i = 0; ___i< c; ___i++) { free(l[___i]); } }
 
-
-#define debug_print(fmt, ...) do { fprintf(stderr, fmt, __VA_ARGS__); } while (0)
-#ifdef DEBUG
-	#define LOG_D(fmt, ...) debug_print(" D: "fmt, __VA_ARGS__)
-#else
-	#define LOG_D(fmt, ...) 
-#endif
-
-#ifdef MOREDEBUG
-	#define LOG_V(fmt, ...) debug_print(" V: "fmt, __VA_ARGS__)
-#else
-	#define LOG_V(fmt, ...) 
-#endif
 
 struct csv_parser* _parser;
 
