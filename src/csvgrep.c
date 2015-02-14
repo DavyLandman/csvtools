@@ -191,7 +191,8 @@ static size_t parse_config(int argc, char** argv, size_t chars_read) {
 	for (int c = 0; c < _column_count; c++) {
 		for (size_t pat = 0;  pat < n_patterns; pat++) {
 			if (_cell_lengths[c] == column_lengths[pat]) {
-				if (strncmp(_cell_starts[c], columns[pat], column_lengths[pat])) {
+				if (strncmp(_cell_starts[c], columns[pat], column_lengths[pat])==0) {
+					LOG_V("Adding pattern %s for column: %s (%d)\n", patterns[pat], columns[pat],c);
 					// we have found the column
 					const char *pcreErrorStr;
 					int pcreErrorOffset;
@@ -290,7 +291,7 @@ static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 					unquote(&cell, &length);
 				}
 				int ovector[255];
-				matches &= pcre_exec(_patterns[_current_cell_id], _patterns_extra[_current_cell_id], cell, length, 0, 0, ovector, 255) == 0;
+				matches &= pcre_exec(_patterns[_current_cell_id], _patterns_extra[_current_cell_id], cell, length, 0, 0, ovector, 255) >= 0;
 				if (quoted) {
 					free(cell);
 				}
