@@ -11,14 +11,25 @@ verbose = ARGUMENTS.get('verbose', 0)
 env = Environment(ENV = {'PATH' : os.environ['PATH'],
                          'TERM' : os.environ['TERM'],
                          'HOME' : os.environ['HOME']})
-env.Append(CCFLAGS = ['-std=gnu99','-Wall', '-Wpedantic', '-Wextra','-O3'])
+CCFlags = ['-std=gnu99','-Wall', '-Wpedantic', '-Wextra']
 #env.Append(LINKFLAGS = ['-Wl'])
 if mode == 'debug':
   env.Append(CPPDEFINES={'DEBUG' : '1'})
-  env["CCFLAGS"].extend(['-g'])
-	
-if verbose > 0:
-  env.Append(CPPDEFINES={'MOREDEBUG' : '1'})
+  CCFlags.append('-g')
+  if verbose > 0:
+    env.Append(CPPDEFINES={'MOREDEBUG' : '1'})
 
+elif mode == 'gdb':
+  CCFlags.append('-g')
+elif mode == 'profile':
+  CCFlags.append('-g')
+  CCFlags.append('-pg')
+  CCFlags.append('-O3')
+  env.Append(LINKFLAGS = ['-pg'])
+else:
+  CCFlags.append('-O3')
+
+
+env.Append(CCFLAGS = CCFlags)
 csvchop = env.Program(target='csvchop',source=env.Object(source = sources))
 Default(csvchop)

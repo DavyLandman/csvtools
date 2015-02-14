@@ -43,3 +43,13 @@ bool contains(const char** list, size_t list_size, const char* needle) {
 	}
 	return false;
 }
+
+bool contains_n(const char** list, size_t list_size, const char* needle, size_t needle_size) {
+	char* s = calloc(sizeof(char), needle_size + 2);
+	s[needle_size + 1] = '\0';
+	memcpy(s, needle, needle_size);
+	bool result = contains(list, list_size, s);
+	free(s);
+	return result;
+}
+
