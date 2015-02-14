@@ -18,6 +18,9 @@ if mode == 'debug':
   CCFlags.append('-g')
   if verbose > 0:
     env.Append(CPPDEFINES={'MOREDEBUG' : '1'})
+
+elif mode == 'gdb':
+  CCFlags.append('-g')
 elif mode == 'profile':
   CCFlags.append('-g')
   CCFlags.append('-pg')
