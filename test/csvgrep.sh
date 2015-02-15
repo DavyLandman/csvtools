@@ -20,6 +20,8 @@ function test_csvgrep() {
 
 	if [ "$OUTPUT" != "$REF" ]; then
 		echo "Test failed: " $1 " : " $2
+		echo $REF
+		echo $OUTPUT
 		RESULT=1
 	fi
 }
@@ -45,10 +47,10 @@ function test_csvgrep_xz() {
 
 test_csvgrep "simple.csv" "-p a/[0-9]+/" "-c a -r [0-9]+" 
 test_csvgrep "simple.csv" "-p a/[1-2]/ -p b/[2-3]/" "-c a,b -r [1-3]" 
-test_csvgrep "corners.csv" "-p 'a/^$/'" "-c a -r '^$'" 
-test_csvgrep "corners.csv" "-p a/[\"]/" "-c a -r '[\"]'" 
-test_csvgrep "large-fields.csv" "-p 'column1/(foo|bar)/'" "-c column1 -r '(foo|bar)'" 
-test_csvgrep "large-fields.csv" "-p 'column3/(foo|bar)/'" "-c column3 -r '(foo|bar)'" 
+test_csvgrep "corners.csv" "-p a/^$/" "-c a -r ^$" 
+test_csvgrep "corners.csv" "-p 'a/[\"]/'" "-c a -r [\"]" # let's test the advanced un-escaping
+test_csvgrep "large-fields.csv" "-p 'column1/(foo|bar)/'" "-c column1 -r (foo|bar)" 
+test_csvgrep "large-fields.csv" "-p 'column3/(foo|bar)/'" "-c column3 -r (foo|bar)" 
 
 test_csvgrep_xz "canada-2011-census.csv.xz" "-p Characteristic/201[0-2]/" "-c Characteristic -r 201[0-2]" 
 
