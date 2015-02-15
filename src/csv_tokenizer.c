@@ -219,5 +219,5 @@ NORMAL_CELL:
 	*consumed = (size_t)(current_char - tokenizer->buffer);
 	*cells_found = (size_t)(cell_start - tokenizer->cell_start);
 
-	LOG_V("tokenizer-done\t%d, %d, %d, %d %c (%lu)\n", tokenizer->prev_quote, tokenizer->in_quote, tokenizer->prev_newline, tokenizer->prev_cell, *(current_char-1), *consumed  );
+	LOG_V("tokenizer-done\t%d, %d, %d, %d %c (%lu) %d\n", tokenizer->prev_quote, tokenizer->in_quote, tokenizer->prev_newline, tokenizer->prev_cell, *(current_char-1), *consumed  , *last_full);
 }
