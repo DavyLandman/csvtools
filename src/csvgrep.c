@@ -299,15 +299,18 @@ static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 				matches &= matchResult >= 0;
 #ifdef MOREDEBUG
 				if (matchResult < 0) {
-				  switch(matchResult) {
-					  case PCRE_ERROR_NOMATCH      : fprintf(stderr,"String did not match the pattern\n");        break;
-					  case PCRE_ERROR_NULL         : fprintf(stderr,"Something was null\n");                      break;
-					  case PCRE_ERROR_BADOPTION    : fprintf(stderr,"A bad option was passed\n");                 break;
-					  case PCRE_ERROR_BADMAGIC     : fprintf(stderr,"Magic number bad (compiled re corrupt?)\n"); break;
-					  case PCRE_ERROR_UNKNOWN_NODE : fprintf(stderr,"Something kooky in the compiled re\n");      break;
-					  case PCRE_ERROR_NOMEMORY     : fprintf(stderr,"Ran out of memory\n");                       break;
-					  default                      : fprintf(stderr,"Unknown error\n");                           break;
-				  }
+					fprintf(stderr, "tried to match :'");
+					fwrite(cell, sizeof(char), length, stderr);
+					fprintf(stderr, "'\n");
+					switch(matchResult) {
+						case PCRE_ERROR_NOMATCH      : fprintf(stderr,"String did not match the pattern\n");        break;
+						case PCRE_ERROR_NULL         : fprintf(stderr,"Something was null\n");                      break;
+						case PCRE_ERROR_BADOPTION    : fprintf(stderr,"A bad option was passed\n");                 break;
+						case PCRE_ERROR_BADMAGIC     : fprintf(stderr,"Magic number bad (compiled re corrupt?)\n"); break;
+						case PCRE_ERROR_UNKNOWN_NODE : fprintf(stderr,"Something kooky in the compiled re\n");      break;
+						case PCRE_ERROR_NOMEMORY     : fprintf(stderr,"Ran out of memory\n");                       break;
+						default                      : fprintf(stderr,"Unknown error\n");                           break;
+					}
 				}
 #endif
 				if (quoted) {
