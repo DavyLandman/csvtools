@@ -228,7 +228,7 @@ static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 	LOG_V("Entry: current_cell: %d\n", _current_cell_id);
 	char const ** current_cell_start = _cell_starts + offset;
 	char const ** cell_starts_end = _cell_starts + cells_found;
-	size_t* current_cell_length = _cell_lengths;
+	size_t* current_cell_length = _cell_lengths + offset;
 	bool matches = true;
 	if (_half_line) {
 		matches = _prev_matches;
