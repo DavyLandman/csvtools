@@ -17,9 +17,9 @@ struct csv_tokenizer* _tokenizer;
 
 static char _buffer[BUFFER_SIZE];
 static char _prev_line[BUFFER_SIZE];
-static size_t _prev_line_length;
+static size_t _prev_line_length = 0;
 static char _prev_cell[BUFFER_SIZE];
-static size_t _prev_cell_length;
+static size_t _prev_cell_length = 0;
 
 static char const* _cell_starts[CELL_BUFFER_SIZE];
 static size_t _cell_lengths[CELL_BUFFER_SIZE];
@@ -255,6 +255,7 @@ static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 					if (first_line && _half_line) {
 						fwrite(_prev_line, sizeof(char), _prev_line_length, stdout);
 						first_line = false;
+						_prev_line_length = 0;
 					}
 					fwrite(current_line_start, sizeof(char), current_line_length, stdout);
 					fwrite(_newline, sizeof(char), _newline_length, stdout);
@@ -275,7 +276,7 @@ static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 		}
 		else if (matches) { // only if we have a match does it make sense to test other cells
 			current_line_length += 1 + *current_cell_length;
-			if (_current_cell_id == 0) {
+			if (_current_cell_id == 0 || current_cell_start == (_cell_starts + offset)) {
 				current_line_length--; // the first doesn't have a separator
 			}
 			if (_patterns[_current_cell_id] != NULL) {
@@ -283,9 +284,11 @@ static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 				size_t length = *current_cell_length;
 				if (current_cell_start == (cell_starts_end-1) && !last_full) {
 					// we do not have the full cell at the moment, let's copy it
-					_prev_cell_length = *current_cell_length;
-					memcpy(_prev_cell, *current_cell_start, sizeof(char) * _prev_cell_length);
+					size_t old_cell_length = _prev_cell_length;
+					_prev_cell_length += *current_cell_length;
+					memcpy(_prev_cell + old_cell_length, *current_cell_start, sizeof(char) * (*current_cell_length));
 					_half_cell = true;
+					_current_cell_id++;
 					break;
 				}
 				if (_half_cell && current_cell_start == _cell_starts) {
@@ -294,6 +297,7 @@ static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 					memcpy(_prev_cell + _prev_cell_length, cell, sizeof(char) * length);
 					cell = _prev_cell;
 					length +=  _prev_cell_length;
+					_prev_cell_length = 0;
 				}
 				bool quoted = length > 2 && cell[0] == '"';
 				if (quoted) {
@@ -328,16 +332,27 @@ static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 		current_cell_start++;
 		current_cell_length++;
 	}
-	if (!last_full) {
-		// the last cell wasn't completly printed, so we must be inside a row
+	if (_current_cell_id != 0) {
+		// the last row wasn't completly printed, so we must be inside a row
 		_prev_matches = matches;
 		if (_prev_matches) {
 			// it could still match, so let's copy the line
-			_prev_line_length = current_line_length;
-			memcpy(_prev_line, current_line_start, sizeof(char) * _prev_line_length);
+			size_t old_line_length = _prev_line_length;
+			_prev_line_length += current_line_length;
+			memcpy(_prev_line + old_line_length, current_line_start, sizeof(char) * current_line_length);
+			if (last_full) { // the , gets eaten away
+				_prev_line[_prev_line_length++] = _separator;
+			}
+#ifdef MOREDEBUG
+			fprintf(stderr, "current prev line :'");
+			fwrite(_prev_line, sizeof(char), _prev_line_length, stderr);
+			fprintf(stderr, "'\n");
+#endif
 		}
 		_half_line = true;
-		_current_cell_id--;
+		if (!last_full) {
+			_current_cell_id--;
+		}
 	}
 	else {
 		_half_line = false;
