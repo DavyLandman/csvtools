@@ -196,7 +196,7 @@ static size_t parse_config(int argc, char** argv, size_t chars_read) {
 					// we have found the column
 					const char *pcreErrorStr;
 					int pcreErrorOffset;
-					_patterns[c] = pcre_compile(patterns[pat], PCRE_DOLLAR_ENDONLY || PCRE_DOTALL || PCRE_UTF8, &pcreErrorStr, &pcreErrorOffset, NULL); 
+					_patterns[c] = pcre_compile(patterns[pat], PCRE_DOTALL || PCRE_UTF8, &pcreErrorStr, &pcreErrorOffset, NULL); 
 					if(_patterns[c] == NULL) {
 						fprintf(stderr, "ERROR: Could not compile '%s': %s\n", patterns[pat], pcreErrorStr);
 						exit(1);
@@ -260,6 +260,7 @@ static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 				current_line_start = *(current_cell_start + 1);
 				current_line_length = 0;
 				_current_cell_id = -1;
+				matches = true;
 			}
 			else if (_current_cell_id < _column_count) {
 				fprintf(stderr, "Not enough cells in this row, expect: %d, got: %d (cell %zu)\n", _column_count, _current_cell_id,  (size_t)(current_cell_start - _cell_starts));
