@@ -11,12 +11,13 @@
 #include "debug.h"
 
 #define BUFFER_SIZE 1024*1024
+//#define BUFFER_SIZE 30
 #define CELL_BUFFER_SIZE BUFFER_SIZE / 4
 
 struct csv_tokenizer* _tokenizer;
 
 static char _buffer[BUFFER_SIZE];
-static char _prev_line[BUFFER_SIZE];
+static char _prev_line[BUFFER_SIZE * 2];
 static size_t _prev_line_length = 0;
 static char _prev_cell[BUFFER_SIZE];
 static size_t _prev_cell_length = 0;
@@ -339,6 +340,7 @@ static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 			// it could still match, so let's copy the line
 			size_t old_line_length = _prev_line_length;
 			_prev_line_length += current_line_length;
+			assert(_prev_line_length < (BUFFER_SIZE * 2));
 			memcpy(_prev_line + old_line_length, current_line_start, sizeof(char) * current_line_length);
 			if (last_full) { // the , gets eaten away
 				_prev_line[_prev_line_length++] = _separator;
