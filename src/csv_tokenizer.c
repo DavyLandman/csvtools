@@ -181,18 +181,23 @@ AFTER_QUOTE:
 NORMAL_CELL:;
 			char sep = tokenizer->separator;
 			while (current_char < char_end4) {
-				current_char++;
-				if (*current_char == '\n' || *current_char == '\r' || *current_char == sep) 
+				if (current_char[1] == sep ||current_char[1] == '\n' || current_char[1] == '\r')  {
+					current_char += 1;
 					goto FOUND_CELL_END;
-				current_char++;
-				if (*current_char == '\n' || *current_char == '\r' || *current_char == sep) 
+				}
+				if (current_char[2] == sep ||current_char[2] == '\n' || current_char[2] == '\r')  {
+					current_char += 2;
 					goto FOUND_CELL_END;
-				current_char++;
-				if (*current_char == '\n' || *current_char == '\r' || *current_char == sep) 
+				}
+				if (current_char[3] == sep ||current_char[3] == '\n' || current_char[3] == '\r')  {
+					current_char += 3;
 					goto FOUND_CELL_END;
-				current_char++;
-				if (*current_char == '\n' || *current_char == '\r' || *current_char == sep) 
+				}
+				if (current_char[4] == sep ||current_char[4] == '\n' || current_char[4] == '\r')  {
+					current_char += 4;
 					goto FOUND_CELL_END;
+				}
+				current_char += 4;
 			}
 			while (++current_char < char_end &&	*current_char != tokenizer->separator && *current_char != '\n' && *current_char != '\r');
 FOUND_CELL_END:
