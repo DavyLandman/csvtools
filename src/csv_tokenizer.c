@@ -42,6 +42,7 @@ struct csv_tokenizer* setup_tokenizer(char separator, const char* buffer, char c
 void tokenize_cells(struct csv_tokenizer* tokenizer, size_t buffer_offset, size_t buffer_read, size_t* consumed, size_t* cells_found, bool* last_full) {
 	const char* current_char = tokenizer->buffer + buffer_offset;
 	const char* char_end = tokenizer->buffer + buffer_read;
+	const char* char_end4 = tokenizer->buffer + buffer_read - 4;
 	const char* current_start = current_char;
 
 	char const** cell_start = tokenizer->cell_start;
@@ -177,8 +178,24 @@ AFTER_QUOTE:
 		}
 		else {
 			// start of a new field
-NORMAL_CELL:
+NORMAL_CELL:;
+			char sep = tokenizer->separator;
+			while (current_char < char_end4) {
+				current_char++;
+				if (*current_char == '\n' || *current_char == '\r' || *current_char == sep) 
+					goto FOUND_CELL_END;
+				current_char++;
+				if (*current_char == '\n' || *current_char == '\r' || *current_char == sep) 
+					goto FOUND_CELL_END;
+				current_char++;
+				if (*current_char == '\n' || *current_char == '\r' || *current_char == sep) 
+					goto FOUND_CELL_END;
+				current_char++;
+				if (*current_char == '\n' || *current_char == '\r' || *current_char == sep) 
+					goto FOUND_CELL_END;
+			}
 			while (++current_char < char_end &&	*current_char != tokenizer->separator && *current_char != '\n' && *current_char != '\r');
+FOUND_CELL_END:
 			*cell_start++ = current_start;
 			*cell_length++ = (size_t)((current_char)-current_start);
 
