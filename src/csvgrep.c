@@ -231,7 +231,7 @@ static size_t parse_config(int argc, char** argv, size_t chars_read) {
 	return consumed;
 }
 
-static void unquote(char ** quoted, size_t* length);
+static char const* unquote(char const* quoted, size_t* length);
 
 static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 	LOG_D("Starting output: %zu (%d)\n", cells_found, last_full);
@@ -285,7 +285,7 @@ static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 				current_line_length--; // the first doesn't have a separator
 			}
 			if (_patterns[_current_cell_id] != NULL) {
-				char * cell = (char*)*current_cell_start;
+				char const* cell = *current_cell_start;
 				size_t length = *current_cell_length;
 				if (current_cell_start == (cell_starts_end-1) && !last_full) {
 					// we do not have the full cell at the moment, let's copy it
@@ -304,9 +304,16 @@ static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 					length +=  _prev_cell_length;
 					_prev_cell_length = 0;
 				}
-				bool quoted = length > 2 && cell[0] == '"';
-				if (quoted) {
-					unquote(&cell, &length);
+				if (length > 1 && cell[0] == '"') {
+					cell++;
+					length -= 2;
+					char const* c = cell-1;
+					char const* cell_end = cell + length;
+					while (++c < cell_end && *c != '"');
+					if (c != cell_end) {
+						// we have nested quotes
+						cell = unquote(cell, &length);
+					}
 				}
 				int ovector[255];
 				int matchResult = pcre_exec(_patterns[_current_cell_id], _patterns_extra[_current_cell_id], cell, length, 0, 0, ovector, 255);
@@ -327,9 +334,6 @@ static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 					}
 				}
 #endif
-				if (quoted) {
-					free(cell);
-				}
 			}
 		}
 
@@ -366,13 +370,12 @@ static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 	LOG_V("Exit: current_cell: %d\n", _current_cell_id);
 }
 
-// might be a place to optimize
-static void unquote(char ** quoted, size_t* length) {
-	char * result = calloc(sizeof(char), *length - 2);
-	char * current_char = *quoted + 1; // skip "
-	char * char_end = *quoted + *length - 1; // skip "
-	*quoted = result;
-	*length-=2;
+
+static char _unquote_buffer[BUFFER_SIZE];
+static char const * unquote(char const* quoted, size_t* length) {
+	char * result = _unquote_buffer;
+	char const * current_char = quoted; // skip "
+	char const * char_end = quoted + *length; // skip "
 	while (current_char < char_end) {
 		if (*current_char == '"') {
 			// must be an escaped "
@@ -381,4 +384,5 @@ static void unquote(char ** quoted, size_t* length) {
 		}
 		*result++ = *current_char++;
 	}
+	return _unquote_buffer;
 }
