@@ -350,7 +350,7 @@ static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 			_prev_line_length += current_line_length;
 			assert(_prev_line_length < (BUFFER_SIZE * 2));
 			memcpy(_prev_line + old_line_length, current_line_start, sizeof(char) * current_line_length);
-			if (last_full) { // the , gets eaten away
+			if (last_full && _current_cell_id != _column_count) { // the , gets eaten away
 				_prev_line[_prev_line_length++] = _separator;
 			}
 #ifdef MOREDEBUG
