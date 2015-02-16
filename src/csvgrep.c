@@ -25,6 +25,7 @@ static size_t _prev_cell_length = 0;
 static char const* _cell_starts[CELL_BUFFER_SIZE];
 static size_t _cell_lengths[CELL_BUFFER_SIZE];
 
+static int _have_jit = 0;
 static int _column_count = 0;
 static int _current_cell_id = 0;
 static char _separator = ',';
@@ -45,6 +46,11 @@ static void debug_cells(size_t total);
 int main(int argc, char** argv) {
 	size_t chars_read;
 	bool first = true;
+
+	pcre_config(PCRE_CONFIG_JIT, &_have_jit);
+	if (!_have_jit) {
+		fprintf(stderr, "I am running without PCRE-JIT support, expect less performance.\n");
+	}
 
 	while ((chars_read = fread(_buffer, 1, BUFFER_SIZE, stdin)) > 0) {
 		LOG_D("New data read: %zu\n", chars_read);
@@ -207,11 +213,7 @@ static size_t parse_config(int argc, char** argv, size_t chars_read) {
 						fprintf(stderr, "ERROR: Could not compile '%s': %s\n", patterns[pat], pcreErrorStr);
 						exit(1);
 					}
-#ifdef SUPPORT_JIT
-					_patterns_extra[c] = pcre_study(_patterns[c], PCRE_STUDY_JIT_COMPILE, &pcreErrorStr);
-#else
-					_patterns_extra[c] = pcre_study(_patterns[c], 0, &pcreErrorStr);
-#endif
+					_patterns_extra[c] = pcre_study(_patterns[c], _have_jit ? PCRE_STUDY_JIT_COMPILE : 0, &pcreErrorStr);
 					if(_patterns_extra[c] == NULL) {
 						fprintf(stderr, "ERROR: Could not study '%s': %s\n", patterns[pat], pcreErrorStr);
 						exit(1);
