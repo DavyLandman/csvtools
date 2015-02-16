@@ -53,6 +53,7 @@ test_csvgrep "large-fields.csv" "-p 'column1/(foo|bar)/'" "-c column1 -r .*(foo|
 test_csvgrep "large-fields.csv" "-p 'column3/(foo|bar)/'" "-c column3 -r .*(foo|bar).*" 
 
 test_csvgrep_xz "canada-2011-census.csv.xz" "-p Characteristic/201[0-2]/" "-c Characteristic -r .*201[0-2].*" 
+test_csvgrep_xz "canada-2011-census.csv.xz" "-p Topic/[A-Z][a-e]/" "-c Topic -r .*[A-Z][a-e].*" 
 
 if [ $RESULT == 0 ]; then
 	echo "Tests succeeded"
