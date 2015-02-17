@@ -180,27 +180,18 @@ AFTER_QUOTE:
 			// start of a new field
 NORMAL_CELL:;
 			char sep = tokenizer->separator;
+#define NEW_LINE_ROUGH_MATCH 0x0F // 0b00001111 is the or from \n and \r, if those are the only bits set, there might be a chance of a newline
 			while (current_char < char_end4) {
-				if (current_char[1] == sep ||current_char[1] == '\n' || current_char[1] == '\r')  {
-					current_char += 1;
-					goto FOUND_CELL_END;
-				}
-				if (current_char[2] == sep ||current_char[2] == '\n' || current_char[2] == '\r')  {
-					current_char += 2;
-					goto FOUND_CELL_END;
-				}
-				if (current_char[3] == sep ||current_char[3] == '\n' || current_char[3] == '\r')  {
-					current_char += 3;
-					goto FOUND_CELL_END;
-				}
-				if (current_char[4] == sep ||current_char[4] == '\n' || current_char[4] == '\r')  {
-					current_char += 4;
-					goto FOUND_CELL_END;
+				bool possibleEnd = current_char[1] == sep || (current_char[1] | NEW_LINE_ROUGH_MATCH) == NEW_LINE_ROUGH_MATCH;
+				possibleEnd |= current_char[2] == sep || (current_char[2] | NEW_LINE_ROUGH_MATCH) == NEW_LINE_ROUGH_MATCH;
+				possibleEnd |= current_char[3] == sep || (current_char[3] | NEW_LINE_ROUGH_MATCH) == NEW_LINE_ROUGH_MATCH;
+				possibleEnd |= current_char[4] == sep || (current_char[4] | NEW_LINE_ROUGH_MATCH) == NEW_LINE_ROUGH_MATCH;
+				if (possibleEnd) {
+					break;
 				}
 				current_char += 4;
 			}
-			while (++current_char < char_end &&	*current_char != tokenizer->separator && *current_char != '\n' && *current_char != '\r');
-FOUND_CELL_END:
+			while (++current_char < char_end &&	*current_char != sep && *current_char != '\n' && *current_char != '\r');
 			*cell_start++ = current_start;
 			*cell_length++ = (size_t)((current_char)-current_start);
 
