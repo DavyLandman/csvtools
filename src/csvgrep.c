@@ -73,7 +73,7 @@ int main(int argc, char** argv) {
 		}
 	}
 	if (_tokenizer != NULL) {
-		free(_tokenizer);
+		free_tokenizer(_tokenizer);
 	}
 	return 0;
 }

@@ -6,11 +6,11 @@
 
 
 struct csv_tokenizer {
-	const char* buffer;
-	char const** cell_start;
-	char const** cell_start_end;
-	size_t* cell_length;
-	size_t* cell_length_end;
+	const char* restrict buffer;
+	char const** restrict cell_start;
+	char const** restrict cell_start_end;
+	size_t* restrict cell_length;
+	size_t* restrict cell_length_end;
 	char separator;
 
 	// tokenizer state
@@ -21,7 +21,7 @@ struct csv_tokenizer {
 	bool in_quote;
 };
 
-struct csv_tokenizer* setup_tokenizer(char separator, const char* buffer, char const ** cell_starts, size_t* cell_lengths, size_t cell_buffers_size) {
+struct csv_tokenizer* setup_tokenizer(char separator, const char* restrict buffer, char const ** restrict cell_starts, size_t* restrict cell_lengths, size_t cell_buffers_size) {
 	struct csv_tokenizer* tokenizer = malloc(sizeof(struct csv_tokenizer));
 	tokenizer->separator = separator;
 	tokenizer->buffer = buffer;
@@ -38,15 +38,18 @@ struct csv_tokenizer* setup_tokenizer(char separator, const char* buffer, char c
 	return tokenizer;
 }
 
+void free_tokenizer(struct csv_tokenizer* restrict tokenizer) {
+	free(tokenizer);
+}
 
-void tokenize_cells(struct csv_tokenizer* tokenizer, size_t buffer_offset, size_t buffer_read, size_t* consumed, size_t* cells_found, bool* last_full) {
-	const char* current_char = tokenizer->buffer + buffer_offset;
-	const char* char_end = tokenizer->buffer + buffer_read;
-	const char* char_end4 = tokenizer->buffer + buffer_read - 4;
-	const char* current_start = current_char;
+void tokenize_cells(struct csv_tokenizer* restrict tokenizer, size_t buffer_offset, size_t buffer_read, size_t* restrict buffer_consumed, size_t* restrict cells_found, bool* restrict last_full) {
+	const char* restrict current_char = tokenizer->buffer + buffer_offset;
+	const char* restrict char_end = tokenizer->buffer + buffer_read;
+	const char* restrict char_end4 = tokenizer->buffer + buffer_read - 4;
+	const char* restrict current_start = current_char;
 
-	char const** cell_start = tokenizer->cell_start;
-	size_t* cell_length = tokenizer->cell_length;
+	char const** restrict cell_start = tokenizer->cell_start;
+	size_t* restrict cell_length = tokenizer->cell_length;
 	LOG_V("tokenizer-start\t%d, %d, %d, %d %c (%lu)\n", tokenizer->prev_quote, tokenizer->in_quote, tokenizer->prev_newline, tokenizer->prev_cell, *current_char, buffer_offset );
 
 	*last_full = true;
@@ -238,8 +241,8 @@ FOUND_CELL_END:
 			}
 		}
 	}
-	*consumed = (size_t)(current_char - tokenizer->buffer);
+	*buffer_consumed = (size_t)(current_char - tokenizer->buffer);
 	*cells_found = (size_t)(cell_start - tokenizer->cell_start);
 
-	LOG_V("tokenizer-done\t%d, %d, %d, %d %c (%lu) %d\n", tokenizer->prev_quote, tokenizer->in_quote, tokenizer->prev_newline, tokenizer->prev_cell, *(current_char-1), *consumed  , *last_full);
+	LOG_V("tokenizer-done\t%d, %d, %d, %d %c (%lu) %d\n", tokenizer->prev_quote, tokenizer->in_quote, tokenizer->prev_newline, tokenizer->prev_cell, *(current_char-1), *buffer_consumed  , *last_full);
 }
