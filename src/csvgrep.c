@@ -31,8 +31,8 @@ static int _current_cell_id = 0;
 static char _separator = ',';
 static char _newline[2];
 static size_t _newline_length = 0;
-static pcre** _patterns = NULL;
-static pcre_extra** _patterns_extra = NULL;
+static pcre** restrict _patterns = NULL;
+static pcre_extra** restrict _patterns_extra = NULL;
 static bool _half_line = false;
 static bool _half_cell = false;
 static bool _count_only = false;
@@ -233,20 +233,20 @@ static size_t parse_config(int argc, char** argv, size_t chars_read) {
 	return consumed;
 }
 
-static char const* unquote(char const* quoted, size_t* length);
+static char const * unquote(char const* restrict quoted, size_t* restrict length);
 
 static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 	LOG_D("Starting output: %zu (%d)\n", cells_found, last_full);
 	LOG_V("Entry: current_cell: %d\n", _current_cell_id);
-	char const ** current_cell_start = _cell_starts + offset;
-	char const ** cell_starts_end = _cell_starts + cells_found;
-	size_t* current_cell_length = _cell_lengths + offset;
+	char const ** restrict current_cell_start = _cell_starts + offset;
+	char const ** restrict cell_starts_end = _cell_starts + cells_found;
+	size_t* restrict current_cell_length = _cell_lengths + offset;
 	bool matches = true;
 	if (_half_line) {
 		matches = _prev_matches;
 	}
 	bool first_line = true;
-	char const* current_line_start = *current_cell_start;
+	char const* restrict current_line_start = *current_cell_start;
 	size_t current_line_length = 0;
 
 	while (current_cell_start < cell_starts_end) {
@@ -287,7 +287,7 @@ static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 				current_line_length--; // the first doesn't have a separator
 			}
 			if (_patterns[_current_cell_id] != NULL) {
-				char const* cell = *current_cell_start;
+				char const* restrict cell = *current_cell_start;
 				size_t length = *current_cell_length;
 				if (current_cell_start == (cell_starts_end-1) && !last_full) {
 					// we do not have the full cell at the moment, let's copy it
@@ -309,8 +309,8 @@ static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 				if (length > 1 && cell[0] == '"') {
 					cell++;
 					length -= 2;
-					char const* c = cell-1;
-					char const* cell_end = cell + length;
+					char const* restrict c = cell-1;
+					char const* restrict cell_end = cell + length;
 					while (++c < cell_end && *c != '"');
 					if (c != cell_end) {
 						// we have nested quotes
@@ -374,10 +374,10 @@ static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 
 
 static char _unquote_buffer[BUFFER_SIZE];
-static char const * unquote(char const* quoted, size_t* length) {
-	char * result = _unquote_buffer;
-	char const * current_char = quoted; // skip "
-	char const * char_end = quoted + *length; // skip "
+static char const * unquote(char const* restrict quoted, size_t* restrict length) {
+	char * restrict result = _unquote_buffer;
+	char const * restrict current_char = quoted; 
+	char const * restrict char_end = quoted + *length; 
 	while (current_char < char_end) {
 		if (*current_char == '"') {
 			// must be an escaped "
