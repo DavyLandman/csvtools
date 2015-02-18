@@ -3,14 +3,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "debug.h"
+#include "csv_tokenizer.h"
 
 
 struct csv_tokenizer {
 	const char* restrict buffer;
-	char const** restrict cell_start;
-	char const** restrict cell_start_end;
-	size_t* restrict cell_length;
-	size_t* restrict cell_length_end;
+	Cell* restrict cells;
 	char separator;
 
 	// tokenizer state
@@ -21,14 +19,11 @@ struct csv_tokenizer {
 	bool in_quote;
 };
 
-struct csv_tokenizer* setup_tokenizer(char separator, const char* restrict buffer, char const ** restrict cell_starts, size_t* restrict cell_lengths, size_t cell_buffers_size) {
+struct csv_tokenizer* setup_tokenizer(char separator, const char* restrict buffer, Cell* restrict cells) {
 	struct csv_tokenizer* tokenizer = malloc(sizeof(struct csv_tokenizer));
 	tokenizer->separator = separator;
 	tokenizer->buffer = buffer;
-	tokenizer->cell_start = cell_starts;
-	tokenizer->cell_start_end = cell_starts + cell_buffers_size - 2; // leave 2 at the end for newline and half record
-	tokenizer->cell_length = cell_lengths;
-	tokenizer->cell_length_end = cell_lengths + cell_buffers_size - 2;
+	tokenizer->cells = cells;
 
 	tokenizer->prev_newline = false;
 
@@ -48,8 +43,7 @@ void tokenize_cells(struct csv_tokenizer* restrict tokenizer, size_t buffer_offs
 	const char* restrict char_end4 = tokenizer->buffer + buffer_read - 4;
 	const char* restrict current_start = current_char;
 
-	char const** restrict cell_start = tokenizer->cell_start;
-	size_t* restrict cell_length = tokenizer->cell_length;
+	Cell* restrict cell = tokenizer->cells;
 	LOG_V("tokenizer-start\t%d, %d, %d, %d %c (%lu)\n", tokenizer->prev_quote, tokenizer->in_quote, tokenizer->prev_newline, tokenizer->prev_cell, *current_char, buffer_offset );
 
 	*last_full = true;
@@ -80,8 +74,9 @@ void tokenize_cells(struct csv_tokenizer* restrict tokenizer, size_t buffer_offs
 		goto NORMAL_CELL;
 	}
 	else if (*current_char == tokenizer->separator) {
-		*cell_start++ = current_start;
-		*cell_length++ = 0;
+		cell->start = current_start;
+		cell->length = 0;
+		cell++;
 		current_char++;
 		current_start = current_char;
 	}
@@ -111,8 +106,9 @@ AFTER_QUOTE:
 			if (current_char != char_end) {
 				current_char++;
 			}
-			*cell_start++ = current_start;
-			*cell_length++ = (size_t)((current_char)-current_start);
+			cell->start = current_start;
+			cell->length = (size_t)((current_char)-current_start);
+			cell++;
 
 			if (current_char == char_end) {
 				if (*(current_char-1) != '"' || *(current_char-2) == '"' ||  current_char - 1 == current_start) {
@@ -125,8 +121,9 @@ AFTER_QUOTE:
 			}
 			
 			if (*current_char == '\n' || *current_char == '\r') {
-				*cell_start++ = NULL;
-				*cell_length++ = -1;
+				cell->start = NULL;
+				cell->length = -1;
+				cell++;
 				// consume newline
 				while (++current_char < char_end && (*current_char == '\n' || *current_char == '\r'));
 				if (current_char == char_end) {
@@ -145,28 +142,24 @@ AFTER_QUOTE:
 				exit(1);
 				return;
 			}
-
-			if (cell_start >= tokenizer->cell_start_end) {
-				break;
-			}
 		}
 		else if (*current_char == tokenizer->separator) {
 			// an empty cell somewhere in the middle
-			*cell_start++ = current_start;
-			*cell_length++ = 0;
+			cell->start = current_start;
+			cell->length = 0;
+			cell++;
 			current_start = ++current_char;
-			if (cell_start >= tokenizer->cell_start_end) {
-				break;
-			}
 		}
 		else if (*current_char == '\n' || *current_char == '\r') {
 			// an newline means that we had an empty cell as last cell of the
 			// row
-			*cell_start++ = current_start;
-			*cell_length++ = 0;
+			cell->start = current_start;
+			cell->length = 0;
+			cell++;
 
-			*cell_start++ = NULL;
-			*cell_length++ = -1;
+			cell->start = NULL;
+			cell->length = -1;
+			cell++;
 			// consume newline
 			while (++current_char < char_end && (*current_char == '\n' || *current_char == '\r'));
 			if (current_char == char_end) {
@@ -175,9 +168,6 @@ AFTER_QUOTE:
 				break;
 			}
 			current_start = current_char;
-			if (cell_start >= tokenizer->cell_start_end) {
-				break;
-			}
 		}
 		else {
 			// start of a new field
@@ -204,8 +194,9 @@ NORMAL_CELL:;
 			}
 			while (++current_char < char_end &&	*current_char != tokenizer->separator && *current_char != '\n' && *current_char != '\r');
 FOUND_CELL_END:
-			*cell_start++ = current_start;
-			*cell_length++ = (size_t)((current_char)-current_start);
+			cell->start = current_start;
+			cell->length = (size_t)((current_char)-current_start);
+			cell++;
 
 			if (current_char == char_end) {
 				if (*(current_char-1) != tokenizer->separator) {
@@ -215,8 +206,9 @@ FOUND_CELL_END:
 				}
 			}
 			else if (*current_char == '\n' || *current_char == '\r') {
-				*cell_start++ = NULL;
-				*cell_length++ = -1;
+				cell->start = NULL;
+				cell->length = -1;
+				cell++;
 				// consume newline
 				while (++current_char < char_end && (*current_char == '\n' || *current_char == '\r'));
 				if (current_char == char_end) {
@@ -235,14 +227,10 @@ FOUND_CELL_END:
 				exit(1);
 				return;
 			}
-
-			if (cell_start >= tokenizer->cell_start_end) {
-				break;
-			}
 		}
 	}
 	*buffer_consumed = (size_t)(current_char - tokenizer->buffer);
-	*cells_found = (size_t)(cell_start - tokenizer->cell_start);
+	*cells_found = (size_t)(cell - tokenizer->cells);
 
 	LOG_V("tokenizer-done\t%d, %d, %d, %d %c (%lu) %d\n", tokenizer->prev_quote, tokenizer->in_quote, tokenizer->prev_newline, tokenizer->prev_cell, *(current_char-1), *buffer_consumed  , *last_full);
 }

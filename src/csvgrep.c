@@ -12,7 +12,7 @@
 
 #define BUFFER_SIZE 1024*1024
 //#define BUFFER_SIZE 30
-#define CELL_BUFFER_SIZE BUFFER_SIZE / 4
+#define CELL_BUFFER_SIZE (BUFFER_SIZE / 2) + 2
 
 struct csv_tokenizer* _tokenizer;
 
@@ -22,8 +22,7 @@ static size_t _prev_line_length = 0;
 static char _prev_cell[BUFFER_SIZE];
 static size_t _prev_cell_length = 0;
 
-static char const* _cell_starts[CELL_BUFFER_SIZE];
-static size_t _cell_lengths[CELL_BUFFER_SIZE];
+static Cell _cells[CELL_BUFFER_SIZE];
 
 static int _have_jit = 0;
 static int _column_count = 0;
@@ -80,26 +79,24 @@ int main(int argc, char** argv) {
 
 static void debug_cells(size_t total) {
 #ifdef MOREDEBUG
-	char const ** current_cell_start = _cell_starts;
-	char const ** cell_starts_end = _cell_starts + total;
-	size_t* current_cell_length = _cell_lengths;
+	Cell* current_cell = _cells;
+	Cell* cell_end = _cells + total;
 
-	while (current_cell_start < cell_starts_end) {
-		if (*current_cell_start == NULL) {
-			LOG_V("Cell %zu : Newline\n", (size_t)(current_cell_start - _cell_starts));
+	while (current_cell < cell_end) {
+		if (current_cell->start == NULL) {
+			LOG_V("Cell %zu : Newline\n", (size_t)(current_cell - _cells));
 		}
-		else if (*current_cell_length == 0) {
-			LOG_V("Cell %zu : \n", (size_t)(current_cell_start - _cell_starts));
+		else if (current_cell->length == 0) {
+			LOG_V("Cell %zu : \n", (size_t)(current_cell - _cells));
 		}
 		else {
-			char* s = calloc(sizeof(char), *current_cell_length + 1);
+			char* s = calloc(sizeof(char), current_cell->length + 1);
 			s[*current_cell_length] = '\0';
-			memcpy(s, *current_cell_start, *current_cell_length);
-			LOG_V("Cell %zu : %s\n", (size_t)(current_cell_start - _cell_starts), s);
+			memcpy(s, current_cell->start, current_cell->length);
+			LOG_V("Cell %zu : %s\n", (size_t)(current_cell - _cells), s);
 			free(s);
 		}
-		current_cell_start++;
-		current_cell_length++;
+		current_cell++;
 	}
 #else
 	(void)total;
@@ -161,7 +158,7 @@ static size_t parse_config(int argc, char** argv, size_t chars_read) {
 
 	LOG_D("%s\n","Done parsing config params");	
 
-	_tokenizer = setup_tokenizer(_separator, _buffer, _cell_starts, _cell_lengths, CELL_BUFFER_SIZE);
+	_tokenizer = setup_tokenizer(_separator, _buffer, _cells);
 
 	size_t consumed, cells_found;
 	bool last_full;
@@ -170,20 +167,18 @@ static size_t parse_config(int argc, char** argv, size_t chars_read) {
 	LOG_D("Processed: %zu, Cells: %zu\n", consumed, cells_found);
 	debug_cells(cells_found);
 
-	char const** current_cell = _cell_starts;
-	size_t* current_cell_length = _cell_lengths;
-	while (current_cell < (_cell_starts + cells_found) && *current_cell != NULL) {
+	Cell* current_cell = _cells;
+	while (current_cell < (_cells + cells_found) && current_cell->start != NULL) {
 		// also immediatly print the header
-		if (current_cell != _cell_starts) {
+		if (current_cell != _cells) {
 			fwrite(&(_separator),sizeof(char),1, stdout);
 		}
-		fwrite(*current_cell, sizeof(char), *current_cell_length, stdout);
+		fwrite(current_cell->start, sizeof(char), current_cell->length, stdout);
 		current_cell++;
-		current_cell_length++;
 	}
-	_column_count = (int)(current_cell - _cell_starts);
+	_column_count = (int)(current_cell - _cells);
 
-	const char* new_line = _cell_starts[_column_count-1] + _cell_lengths[_column_count - 1];
+	const char* new_line = _cells[_column_count-1].start + _cells[_column_count - 1].length;
 	_newline[0] = new_line[0];
 	_newline_length = 1;
 	if (new_line[1] == '\n' || new_line[0] == '\r') {
@@ -198,8 +193,8 @@ static size_t parse_config(int argc, char** argv, size_t chars_read) {
 	memset(_patterns_extra, 0, sizeof(pcre_extra*) * _column_count);
 	for (int c = 0; c < _column_count; c++) {
 		for (size_t pat = 0;  pat < n_patterns; pat++) {
-			if (_cell_lengths[c] == column_lengths[pat]) {
-				if (strncmp(_cell_starts[c], columns[pat], column_lengths[pat])==0) {
+			if (_cells[c].length == column_lengths[pat]) {
+				if (strncmp(_cells[c].start, columns[pat], column_lengths[pat])==0) {
 					LOG_V("Adding pattern %s for column: %s (%d)\n", patterns[pat], columns[pat],c);
 					// we have found the column
 					const char *pcreErrorStr;
@@ -234,24 +229,25 @@ static char const * unquote(char const* restrict quoted, size_t* restrict length
 static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 	LOG_D("Starting output: %zu (%d)\n", cells_found, last_full);
 	LOG_V("Entry: current_cell: %d\n", _current_cell_id);
-	char const ** restrict current_cell_start = _cell_starts + offset;
-	char const ** restrict cell_starts_end = _cell_starts + cells_found;
-	size_t* restrict current_cell_length = _cell_lengths + offset;
+
+	Cell const* restrict current_cell = _cells + offset;
+	Cell const* restrict cells_end = _cells + cells_found;
+
 	bool matches = true;
 	if (_half_line) {
 		matches = _prev_matches;
 	}
 	bool first_line = true;
-	char const* restrict current_line_start = *current_cell_start;
+	char const* restrict current_line_start = current_cell->start;
 	size_t current_line_length = 0;
 
-	while (current_cell_start < cell_starts_end) {
+	while (current_cell < cells_end) {
 		if (_current_cell_id > _column_count) {
-			fprintf(stderr, "Too many cells in this row, expect: %d, got: %d (cell: %zu)\n", _column_count, _current_cell_id, (size_t)(current_cell_start - _cell_starts));
+			fprintf(stderr, "Too many cells in this row, expect: %d, got: %d (cell: %zu)\n", _column_count, _current_cell_id, (size_t)(current_cell - _cells));
 			exit(1);
 			return;
 		}
-		if (*current_cell_start == NULL) {
+		if (current_cell->start == NULL) {
 			if (_current_cell_id == _column_count) {
 				// end of the line
 				if (matches) {
@@ -266,35 +262,35 @@ static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 				if (first_line) {
 					first_line = false;
 				}
-				current_line_start = *(current_cell_start + 1);
+				current_line_start = (current_cell + 1)->start;
 				current_line_length = 0;
 				_current_cell_id = -1;
 				matches = true;
 			}
 			else if (_current_cell_id < _column_count) {
-				fprintf(stderr, "Not enough cells in this row, expect: %d, got: %d (cell %zu)\n", _column_count, _current_cell_id,  (size_t)(current_cell_start - _cell_starts));
+				fprintf(stderr, "Not enough cells in this row, expect: %d, got: %d (cell %zu)\n", _column_count, _current_cell_id,  (size_t)(current_cell - _cells));
 				exit(1);
 				return;
 			}
 		}
 		else if (matches) { // only if we have a match does it make sense to test other cells
-			current_line_length += 1 + *current_cell_length;
-			if (_current_cell_id == 0 || current_cell_start == (_cell_starts + offset)) {
+			current_line_length += 1 + current_cell->length;
+			if (_current_cell_id == 0 || current_cell == (_cells + offset)) {
 				current_line_length--; // the first doesn't have a separator
 			}
 			if (_patterns[_current_cell_id] != NULL) {
-				char const* restrict cell = *current_cell_start;
-				size_t length = *current_cell_length;
-				if (current_cell_start == (cell_starts_end-1) && !last_full) {
+				char const* restrict cell = current_cell->start;
+				size_t length = current_cell->length;
+				if (current_cell == (cells_end-1) && !last_full) {
 					// we do not have the full cell at the moment, let's copy it
 					size_t old_cell_length = _prev_cell_length;
-					_prev_cell_length += *current_cell_length;
-					memcpy(_prev_cell + old_cell_length, *current_cell_start, sizeof(char) * (*current_cell_length));
+					_prev_cell_length += current_cell->length;
+					memcpy(_prev_cell + old_cell_length, current_cell->start, sizeof(char) * current_cell->length);
 					_half_cell = true;
 					_current_cell_id++;
 					break;
 				}
-				if (_half_cell && current_cell_start == _cell_starts) {
+				if (_half_cell && current_cell == _cells) {
 					// append the current cell to the back of the previous one.
 					assert(_prev_cell_length + length < BUFFER_SIZE);
 					memcpy(_prev_cell + _prev_cell_length, cell, sizeof(char) * length);
@@ -336,8 +332,7 @@ static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 		}
 
 		_current_cell_id++;
-		current_cell_start++;
-		current_cell_length++;
+		current_cell++;
 	}
 	if (_current_cell_id != 0) {
 		// the last row wasn't completly printed, so we must be inside a row
