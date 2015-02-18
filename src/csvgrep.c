@@ -140,10 +140,6 @@ static size_t parse_config(int argc, char** argv, size_t chars_read) {
 					patterns = realloc(patterns, sizeof(char*) * n_patterns);
 					column_lengths = realloc(column_lengths, sizeof(size_t*) * n_patterns);
 				}
-				if (optarg[0] == '\'' || optarg[0] == '\"') {
-					optarg++;
-					optarg[strlen(optarg)-2] = '\0';
-				}
 				LOG_V("Got pattern: %s\n", optarg);
 				columns[n_patterns - 1] = strtok(optarg, "/");
 				patterns[n_patterns - 1] = strtok(NULL, "/");
