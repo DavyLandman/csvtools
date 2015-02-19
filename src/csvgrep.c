@@ -14,6 +14,12 @@
 //#define BUFFER_SIZE 30
 #define CELL_BUFFER_SIZE (BUFFER_SIZE / 2) + 2
 
+typedef struct {
+	pcre const* restrict pattern;
+	pcre_extra const* restrict extra;
+	
+} Regex;
+
 struct csv_tokenizer* _tokenizer;
 
 static char _buffer[BUFFER_SIZE];
@@ -30,8 +36,7 @@ static int _current_cell_id = 0;
 static char _separator = ',';
 static char _newline[2];
 static size_t _newline_length = 0;
-static pcre** restrict _patterns = NULL;
-static pcre_extra** restrict _patterns_extra = NULL;
+static Regex* _patterns = NULL;
 static bool _half_line = false;
 static bool _half_cell = false;
 static bool _count_only = false;
@@ -73,6 +78,13 @@ int main(int argc, char** argv) {
 	}
 	if (_tokenizer != NULL) {
 		free_tokenizer(_tokenizer);
+	}
+	if (_patterns != NULL) {
+		for (int c = 0; c < _column_count; c++) {
+			pcre_free_study((pcre_extra*)_patterns[c].extra);
+			pcre_free((pcre*)_patterns[c].pattern);
+
+		}
 	}
 	return 0;
 }
@@ -187,10 +199,8 @@ static size_t parse_config(int argc, char** argv, size_t chars_read) {
 	}
 	fwrite(_newline, sizeof(char), _newline_length, stdout);
 
-	_patterns = calloc(sizeof(pcre*),_column_count);
-	_patterns_extra = calloc(sizeof(pcre_extra*),_column_count);
-	memset(_patterns, 0, sizeof(pcre*) * _column_count);
-	memset(_patterns_extra, 0, sizeof(pcre_extra*) * _column_count);
+	_patterns = calloc(sizeof(Regex),_column_count);
+	memset(_patterns, 0, sizeof(Regex) * _column_count);
 	for (int c = 0; c < _column_count; c++) {
 		for (size_t pat = 0;  pat < n_patterns; pat++) {
 			if (_cells[c].length == column_lengths[pat]) {
@@ -199,13 +209,13 @@ static size_t parse_config(int argc, char** argv, size_t chars_read) {
 					// we have found the column
 					const char *pcreErrorStr;
 					int pcreErrorOffset;
-					_patterns[c] = pcre_compile(patterns[pat],PCRE_DOLLAR_ENDONLY |  PCRE_DOTALL | PCRE_NO_UTF8_CHECK, &pcreErrorStr, &pcreErrorOffset, NULL); 
-					if(_patterns[c] == NULL) {
+					_patterns[c].pattern = pcre_compile(patterns[pat],PCRE_DOLLAR_ENDONLY |  PCRE_DOTALL | PCRE_NO_UTF8_CHECK, &pcreErrorStr, &pcreErrorOffset, NULL); 
+					if(_patterns[c].pattern == NULL) {
 						fprintf(stderr, "ERROR: Could not compile '%s': %s\n", patterns[pat], pcreErrorStr);
 						exit(1);
 					}
-					_patterns_extra[c] = pcre_study(_patterns[c], _have_jit ? PCRE_STUDY_JIT_COMPILE : 0, &pcreErrorStr);
-					if(_patterns_extra[c] == NULL) {
+					_patterns[c].extra = pcre_study(_patterns[c].pattern, _have_jit ? PCRE_STUDY_JIT_COMPILE : 0, &pcreErrorStr);
+					if(_patterns[c].extra == NULL) {
 						fprintf(stderr, "ERROR: Could not study '%s': %s\n", patterns[pat], pcreErrorStr);
 						exit(1);
 					}
@@ -278,7 +288,7 @@ static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 			if (_current_cell_id == 0 || current_cell == (_cells + offset)) {
 				current_line_length--; // the first doesn't have a separator
 			}
-			if (_patterns[_current_cell_id] != NULL) {
+			if (_patterns[_current_cell_id].pattern != NULL) {
 				char const* restrict cell = current_cell->start;
 				size_t length = current_cell->length;
 				if (current_cell == (cells_end-1) && !last_full) {
@@ -310,7 +320,7 @@ static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 					}
 				}
 				int ovector[255];
-				int matchResult = pcre_exec(_patterns[_current_cell_id], _patterns_extra[_current_cell_id], cell, length, 0, 0, ovector, 255);
+				int matchResult = pcre_exec(_patterns[_current_cell_id].pattern, _patterns[_current_cell_id].extra, cell, length, 0, 0, ovector, 255);
 				matches &= matchResult >= 0;
 #ifdef MOREDEBUG
 				if (matchResult < 0) {
