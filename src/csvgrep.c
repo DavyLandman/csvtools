@@ -44,6 +44,7 @@ static bool _prev_matches = true;
 static bool _negative = false;
 static bool _or = false;
 
+static long long _count = 0;
 
 static size_t parse_config(int argc, char** argv, size_t chars_read);
 
@@ -78,6 +79,9 @@ int main(int argc, char** argv) {
 			debug_cells(cells_found);
 			output_cells(cells_found, 0, last_full);
 		}
+	}
+	if (_count_only) {
+		fprintf(stdout, "%llu\n", _count);
 	}
 	if (_tokenizer != NULL) {
 		free_tokenizer(_tokenizer);
@@ -191,11 +195,13 @@ static size_t parse_config(int argc, char** argv, size_t chars_read) {
 
 	Cell* current_cell = _cells;
 	while (current_cell < (_cells + cells_found) && current_cell->start != NULL) {
-		// also immediatly print the header
-		if (current_cell != _cells) {
-			fwrite(&(_separator),sizeof(char),1, stdout);
+		if (!_count_only) {
+			// also immediatly print the header
+			if (current_cell != _cells) {
+				fwrite(&(_separator),sizeof(char),1, stdout);
+			}
+			fwrite(current_cell->start, sizeof(char), current_cell->length, stdout);
 		}
-		fwrite(current_cell->start, sizeof(char), current_cell->length, stdout);
 		current_cell++;
 	}
 	_column_count = (int)(current_cell - _cells);
@@ -207,7 +213,9 @@ static size_t parse_config(int argc, char** argv, size_t chars_read) {
 		_newline[1] = '\n';
 		_newline_length = 2;
 	}
-	fwrite(_newline, sizeof(char), _newline_length, stdout);
+	if (!_count_only) {
+		fwrite(_newline, sizeof(char), _newline_length, stdout);
+	}
 
 	_patterns = calloc(sizeof(Regex),_column_count);
 	memset(_patterns, 0, sizeof(Regex) * _column_count);
@@ -246,6 +254,8 @@ static size_t parse_config(int argc, char** argv, size_t chars_read) {
 
 static char const * unquote(char const* restrict quoted, size_t* restrict length);
 
+
+
 static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 	LOG_D("Starting output: %zu (%d)\n", cells_found, last_full);
 	LOG_V("Entry: current_cell: %d\n", _current_cell_id);
@@ -271,13 +281,19 @@ static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 			if (_current_cell_id == _column_count) {
 				// end of the line
 				if (matches) {
-					if (first_line && _half_line) {
-						fwrite(_prev_line, sizeof(char), _prev_line_length, stdout);
-						first_line = false;
+					if (_count_only) {
 						_prev_line_length = 0;
+						_count++;
 					}
-					fwrite(current_line_start, sizeof(char), current_line_length, stdout);
-					fwrite(_newline, sizeof(char), _newline_length, stdout);
+					else {
+						if (first_line && _half_line) {
+							fwrite(_prev_line, sizeof(char), _prev_line_length, stdout);
+							first_line = false;
+							_prev_line_length = 0;
+						}
+						fwrite(current_line_start, sizeof(char), current_line_length, stdout);
+						fwrite(_newline, sizeof(char), _newline_length, stdout);
+					}
 				}
 				if (first_line) {
 					first_line = false;
