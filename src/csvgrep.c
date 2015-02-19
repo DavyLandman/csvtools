@@ -21,26 +21,16 @@ typedef struct {
 } Regex;
 
 struct csv_tokenizer* _tokenizer;
-
 static char _buffer[BUFFER_SIZE];
-static char _prev_line[BUFFER_SIZE * 2];
-static size_t _prev_line_length = 0;
-static char _prev_cell[BUFFER_SIZE];
-static size_t _prev_cell_length = 0;
-
 static Cell _cells[CELL_BUFFER_SIZE];
 
 static int _have_jit = 0;
 static int _column_count = 0;
-static int _current_cell_id = 0;
 static char _separator = ',';
 static char _newline[2];
 static size_t _newline_length = 0;
 static Regex* _patterns = NULL;
-static bool _half_line = false;
-static bool _half_cell = false;
 static bool _count_only = false;
-static bool _prev_matches = true;
 static bool _negative = false;
 static bool _or = false;
 
@@ -254,7 +244,17 @@ static size_t parse_config(int argc, char** argv, size_t chars_read) {
 
 static char const * unquote(char const* restrict quoted, size_t* restrict length);
 
+// data for around the edges
+static char _prev_line[BUFFER_SIZE * 2];
+static size_t _prev_line_length = 0;
+static char _prev_cell[BUFFER_SIZE];
+static size_t _prev_cell_length = 0;
 
+// state of the output
+static int _current_cell_id = 0;
+static bool _half_line = false;
+static bool _half_cell = false;
+static bool _prev_matches = true;
 
 static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 	LOG_D("Starting output: %zu (%d)\n", cells_found, last_full);
