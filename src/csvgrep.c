@@ -41,6 +41,9 @@ static bool _half_line = false;
 static bool _half_cell = false;
 static bool _count_only = false;
 static bool _prev_matches = true;
+static bool _negative = false;
+static bool _or = false;
+
 
 static size_t parse_config(int argc, char** argv, size_t chars_read);
 
@@ -122,19 +125,20 @@ static void print_help() {
 	fprintf(stderr, "  Multiple -p are allowed, they work as an AND \n");
 	fprintf(stderr, "-c ,\n");
 	fprintf(stderr, "  Only count the rows that match\n");
+	fprintf(stderr, "-o ,\n");
+	fprintf(stderr, " Make the match into an OR, changes the behavior of -p and -v\n");
+	fprintf(stderr, "-v ,\n");
+	fprintf(stderr, " Print only the rows that did not match all patterns\n");
 }
 
 static size_t parse_config(int argc, char** argv, size_t chars_read) {
-	_separator = ',';
-	_count_only = false;
-
 	size_t n_patterns = 0;
 	char ** columns = malloc(sizeof(char*));
 	char ** patterns = malloc(sizeof(char*));
 	size_t * column_lengths = malloc(sizeof(size_t*));
 
 	char c;
-	while ((c = getopt (argc, argv, "s:p:c")) != -1) {
+	while ((c = getopt (argc, argv, "s:p:cvo")) != -1) {
 		switch (c) {
 			case 's': 
 				_separator = optarg[0];
@@ -153,6 +157,12 @@ static size_t parse_config(int argc, char** argv, size_t chars_read) {
 				columns[n_patterns - 1] = strtok(optarg, "/");
 				patterns[n_patterns - 1] = strtok(NULL, "/");
 				column_lengths[n_patterns - 1] = strlen(columns[n_patterns - 1]);
+				break;
+			case 'v':
+				_negative = true;
+				break;
+			case 'o':
+				_or = true;
 				break;
 			case '?':
 			case 'h':
@@ -321,7 +331,7 @@ static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 				}
 				int ovector[255];
 				int matchResult = pcre_exec(_patterns[_current_cell_id].pattern, _patterns[_current_cell_id].extra, cell, length, 0, 0, ovector, 255);
-				matches &= matchResult >= 0;
+				matches &= (matchResult >= 0) ^ _negative;
 #ifdef MOREDEBUG
 				if (matchResult < 0) {
 					fprintf(stderr, "tried to match :'");

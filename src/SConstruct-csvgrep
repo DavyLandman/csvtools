@@ -12,7 +12,8 @@ env = Environment(ENV = {'PATH' : os.environ['PATH'],
                          'HOME' : os.environ['HOME']})
 env.Append(CPPPATH = ['../common/'])
 CCFlags = ['-std=gnu99','-Wall', '-Wpedantic', '-Wextra']
-LINKFlags = ['-lpcre']
+#LINKFlags = ['-lpcre']
+LINKFlags = os.popen("pcre-config --libs").read().split(" ")
 if mode == 'debug':
   env.Append(CPPDEFINES={'DEBUG' : '1'})
   CCFlags.append('-g')

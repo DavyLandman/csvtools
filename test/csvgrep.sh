@@ -47,10 +47,13 @@ function test_csvgrep_xz() {
 
 test_csvgrep "simple.csv" "-p a/[0-9]+/" "-c a -r [0-9]+" 
 test_csvgrep "simple.csv" "-p a/[1-2]/ -p b/[2-3]/" "-c a,b -r [1-3]" 
+test_csvgrep "simple.csv" "-v -p a/[1-2]/ -p b/[2-3]/" "-i -c a,b -r [1-3]" 
 test_csvgrep "corners.csv" "-p a/^$/" "-c a -r ^$" 
 test_csvgrep "corners.csv" "-p a/[\"]/" "-c a -r [\"]"
+test_csvgrep "corners.csv" "-v -p a/[\"]/" "-i -c a -r [\"]"
 test_csvgrep "large-fields.csv" "-p column1/(foo|bar)/" "-c column1 -r .*(foo|bar).*" 
 test_csvgrep "large-fields.csv" "-p column3/(foo|bar)/" "-c column3 -r .*(foo|bar).*" 
+test_csvgrep "large-fields.csv" "-v -p column3/(foo|bar)/" "-i -c column3 -r .*(foo|bar).*" 
 
 test_csvgrep_xz "canada-2011-census.csv.xz" "-p Characteristic/201[0-2]/" "-c Characteristic -r .*201[0-2].*" 
 test_csvgrep_xz "canada-2011-census.csv.xz" "-p Topic/[A-Z][a-e]/" "-c Topic -r .*[A-Z][a-e].*" 
