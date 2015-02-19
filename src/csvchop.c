@@ -12,7 +12,7 @@
 
 #define BUFFER_SIZE 1024*1024
 //#define BUFFER_SIZE 30
-#define CELL_BUFFER_SIZE BUFFER_SIZE / 4
+#define CELL_BUFFER_SIZE (BUFFER_SIZE / 2) + 2
 
 #define FREEARRAY(l,c) { for(size_t ___i = 0; ___i< c; ___i++) { free(l[___i]); } }
 
@@ -20,8 +20,7 @@
 struct csv_tokenizer* _tokenizer;
 
 static char _buffer[BUFFER_SIZE];
-static char const* _cell_starts[CELL_BUFFER_SIZE];
-static size_t _cell_lengths[CELL_BUFFER_SIZE];
+static Cell _cells[CELL_BUFFER_SIZE];
 
 // config info
 static int _column_count = 0;
@@ -64,7 +63,7 @@ int main(int argc, char** argv) {
 		}
 	}
 	if (_tokenizer != NULL) {
-		free(_tokenizer);
+		free_tokenizer(_tokenizer);
 	}
 	if (_keep != NULL) {
 		free(_keep);
@@ -74,26 +73,24 @@ int main(int argc, char** argv) {
 
 static void debug_cells(size_t total) {
 #ifdef MOREDEBUG
-	char const ** current_cell_start = _cell_starts;
-	char const ** cell_starts_end = _cell_starts + total;
-	size_t* current_cell_length = _cell_lengths;
+	Cell* current_cell = _cells;
+	Cell* cell_end = _cells + total;
 
-	while (current_cell_start < cell_starts_end) {
-		if (*current_cell_start == NULL) {
-			LOG_V("Cell %zu : Newline\n", (size_t)(current_cell_start - _cell_starts));
+	while (current_cell < cell_end) {
+		if (current_cell->start == NULL) {
+			LOG_V("Cell %zu : Newline\n", (size_t)(current_cell - _cells));
 		}
-		else if (*current_cell_length == 0) {
-			LOG_V("Cell %zu : \n", (size_t)(current_cell_start - _cell_starts));
+		else if (current_cell->length == 0) {
+			LOG_V("Cell %zu : \n", (size_t)(current_cell - _cells));
 		}
 		else {
-			char* s = calloc(sizeof(char), *current_cell_length + 1);
+			char* s = calloc(sizeof(char), current_cell->length + 1);
 			s[*current_cell_length] = '\0';
-			memcpy(s, *current_cell_start, *current_cell_length);
-			LOG_V("Cell %zu : %s\n", (size_t)(current_cell_start - _cell_starts), s);
+			memcpy(s, current_cell->start, current_cell->length);
+			LOG_V("Cell %zu : %s\n", (size_t)(current_cell - _cells), s);
 			free(s);
 		}
-		current_cell_start++;
-		current_cell_length++;
+		current_cell++;
 	}
 #else
 	(void)total;
@@ -174,7 +171,7 @@ static size_t parse_config(int argc, char** argv, size_t chars_read) {
 
 	LOG_D("%s\n","Done parsing config params");	
 
-	_tokenizer = setup_tokenizer(_separator, _buffer, _cell_starts, _cell_lengths, CELL_BUFFER_SIZE);
+	_tokenizer = setup_tokenizer(_separator, _buffer, _cells);
 
 	size_t consumed, cells_found;
 	bool last_full;
@@ -183,13 +180,13 @@ static size_t parse_config(int argc, char** argv, size_t chars_read) {
 	LOG_D("Processed: %zu, Cells: %zu\n", consumed, cells_found);
 	debug_cells(cells_found);
 
-	char const** current_cell = _cell_starts;
-	while (current_cell < (_cell_starts + cells_found) && *current_cell != NULL) {
+	Cell const* current_cell = _cells;
+	while (current_cell < (_cells + cells_found) && current_cell->start != NULL) {
 		current_cell++;
 	}
-	_column_count = (int)(current_cell - _cell_starts);
+	_column_count = (int)(current_cell - _cells);
 
-	const char* new_line = _cell_starts[_column_count-1] + _cell_lengths[_column_count - 1];
+	const char* new_line = _cells[_column_count-1].start + _cells[_column_count - 1].length;
 	_newline[0] = new_line[0];
 	_newline_length = 1;
 	if (new_line[1] == '\n' || new_line[0] == '\r') {
@@ -205,7 +202,7 @@ static size_t parse_config(int argc, char** argv, size_t chars_read) {
 	if (keeps || drops) {
 		const char** chops = (const char**)(keeps ? keeps : drops);
 		for (int c = 0; c < _column_count; c++) {
-			bool cont = contains_n(chops, chops_size, _cell_starts[c], _cell_lengths[c]);
+			bool cont = contains_n(chops, chops_size, _cells[c].start, _cells[c].length);
 			if ((cont && keeps) || (!cont && drops)) {
 				_keep[c] = true;
 			}
@@ -254,38 +251,36 @@ static size_t parse_config(int argc, char** argv, size_t chars_read) {
 static void output_cells(size_t cells_found, bool last_full) {
 	LOG_D("Starting output: %zu (%d)\n", cells_found, last_full);
 	LOG_V("Entry: current_cell: %d\n", _current_cell_id);
-	char const ** current_cell_start = _cell_starts;
-	char const ** cell_starts_end = _cell_starts + cells_found;
-	size_t* current_cell_length = _cell_lengths;
-	while (current_cell_start < cell_starts_end) {
+	Cell const * current_cell = _cells;
+	Cell const * cell_end = _cells + cells_found;
+	while (current_cell < cell_end) {
 		if (_current_cell_id > _column_count) {
-			fprintf(stderr, "Too many cells in this row, expect: %d, got: %d (cell: %zu)\n", _column_count, _current_cell_id, (size_t)(current_cell_start - _cell_starts));
+			fprintf(stderr, "Too many cells in this row, expect: %d, got: %d (cell: %zu)\n", _column_count, _current_cell_id, (size_t)(current_cell - _cells));
 			exit(1);
 			return;
 		}
-		if (*current_cell_start == NULL) {
+		if (current_cell->start == NULL) {
 			if (_current_cell_id == _column_count) {
 				fwrite(_newline, sizeof(char), _newline_length, stdout);
 				_current_cell_id = -1;
 			}
 			else if (_current_cell_id < _column_count) {
-				fprintf(stderr, "Not enough cells in this row, expect: %d, got: %d (cell %zu)\n", _column_count, _current_cell_id,  (size_t)(current_cell_start - _cell_starts));
+				fprintf(stderr, "Not enough cells in this row, expect: %d, got: %d (cell %zu)\n", _column_count, _current_cell_id,  (size_t)(current_cell - _cells));
 				exit(1);
 				return;
 			}
 		}
 		else if (_keep[_current_cell_id]) {
-			if (current_cell_start != _cell_starts || !_half_printed) {
+			if (current_cell != _cells || !_half_printed) {
 				if (_current_cell_id != _first_cell) {
 					fwrite(&(_separator),sizeof(char),1, stdout);
 				}
 			}
-			fwrite(*current_cell_start, sizeof(char), *current_cell_length, stdout);
+			fwrite(current_cell->start, sizeof(char), current_cell->length, stdout);
 		}
 
 		_current_cell_id++;
-		current_cell_start++;
-		current_cell_length++;
+		current_cell++;
 	}
 	if (!last_full) {
 		_half_printed = true;

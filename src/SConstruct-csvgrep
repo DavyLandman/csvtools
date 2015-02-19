@@ -1,0 +1,37 @@
+import os
+
+sources = Split("""
+csvgrep.c
+../common/csv_tokenizer.c
+""")
+mode = ARGUMENTS.get('mode', 'release')
+verbose = ARGUMENTS.get('verbose', 0)
+
+env = Environment(ENV = {'PATH' : os.environ['PATH'],
+                         'TERM' : os.environ['TERM'],
+                         'HOME' : os.environ['HOME']})
+env.Append(CPPPATH = ['../common/'])
+CCFlags = ['-std=gnu99','-Wall', '-Wpedantic', '-Wextra']
+#LINKFlags = ['-lpcre']
+LINKFlags = os.popen("pcre-config --libs").read().split(" ")
+if mode == 'debug':
+  env.Append(CPPDEFINES={'DEBUG' : '1'})
+  CCFlags.append('-g')
+  if verbose > 0:
+    env.Append(CPPDEFINES={'MOREDEBUG' : '1'})
+
+elif mode == 'gdb':
+  CCFlags.append('-g')
+elif mode == 'profile':
+  CCFlags.append('-g')
+  CCFlags.append('-pg')
+  CCFlags.append('-O3')
+  LINKFlags.append('-pg')
+else:
+  CCFlags.append('-O3')
+
+
+env.Append(CCFLAGS = CCFlags)
+env.Append(LINKFLAGS = LINKFlags)
+csvchop = env.Program(target='csvgrep',source=env.Object(source = sources))
+Default(csvchop)

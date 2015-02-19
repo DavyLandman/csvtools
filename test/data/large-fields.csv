@@ -1,0 +1,7 @@
+column1,column2,column3
+foo, 2, bar
+"foo
+
+", 3, bar
+"foo ""
+",5,bar

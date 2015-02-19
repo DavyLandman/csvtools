@@ -3,14 +3,14 @@
 RESULT=0
 
 function test_csvchop() {
-	REF=`cat test-data/$1 | csvcut $3`
+	REF=`cat ../test-data/$1 | csvcut $3`
 	if (($? > 0)); then
 		echo "Test failed: " $1 " : " $2 " (csvcut failed)" 
 		RESULT=1
 		return
 	fi
 
-	OUTPUT=`cat test-data/$1 | ./csvchop $2`
+	OUTPUT=`cat ../test-data/$1 | ./csvchop $2`
 	if (($? > 0)); then
 		echo "Test failed: " $1 " : " $2 " (csvchop failed)" 
 		RESULT=1
@@ -25,13 +25,13 @@ function test_csvchop() {
 }
 
 function test_csvchop_xz() {
-	REF=`xzcat test-data/$1 | csvcut $3 | md5sum`
+	REF=`xzcat ../test-data/$1 | csvcut $3 | md5sum`
 	if (($? > 0)); then
 		echo "Test failed: " $1 " : " $2 " (csvcut failed)" 
 		RESULT=1
 		return
 	fi
-	OUTPUT=`xzcat test-data/$1 | ./csvchop $2 | md5sum`
+	OUTPUT=`xzcat ../test-data/$1 | ./csvchop $2 | md5sum`
 	if (($? > 0)); then
 		echo "Test failed: " $1 " : " $2 " (csvchop failed)" 
 		RESULT=1
