@@ -14,7 +14,6 @@
 typedef struct {
 	pcre const* restrict pattern;
 	pcre_extra const* restrict extra;
-	
 } Regex;
 
 struct csv_tokenizer* _tokenizer;
@@ -22,15 +21,17 @@ static char _buffer[BUFFER_SIZE];
 static Cell _cells[CELL_BUFFER_SIZE];
 
 static int _have_jit = 0;
-static int _column_count = 0;
+
 static char _separator = ',';
 static char _newline[2];
 static size_t _newline_length = 0;
-static Regex* _patterns = NULL;
+
 static bool _count_only = false;
 static bool _negative = false;
 static bool _or = false;
+static Regex* _patterns = NULL;
 
+static int _column_count = 0;
 static long long _count = 0;
 
 static size_t parse_config(int argc, char** argv, size_t chars_read);
