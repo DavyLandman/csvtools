@@ -253,7 +253,7 @@ static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 	Cell const* restrict current_cell = _cells + offset;
 	Cell const* restrict cells_end = _cells + cells_found;
 
-	bool matches = true;
+	bool matches = !_or;
 	if (_half_line) {
 		matches = _prev_matches;
 	}
@@ -285,7 +285,7 @@ static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 				current_line_start = (current_cell + 1)->start;
 				current_line_length = 0;
 				_current_cell_id = -1;
-				matches = true;
+				matches = !_or;
 			}
 			else if (_current_cell_id < _column_count) {
 				fprintf(stderr, "Not enough cells in this row, expect: %d, got: %d (cell %zu)\n", _column_count, _current_cell_id,  (size_t)(current_cell - _cells));
@@ -293,7 +293,7 @@ static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 				return;
 			}
 		}
-		else if (matches) { // only if we have a match does it make sense to test other cells
+		else if (matches || _or) { // only if we have a match does it make sense to test other cells
 			current_line_length += 1 + current_cell->length;
 			if (_current_cell_id == 0 || current_cell == (_cells + offset)) {
 				current_line_length--; // the first doesn't have a separator
@@ -331,7 +331,12 @@ static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 				}
 				int ovector[255];
 				int matchResult = pcre_exec(_patterns[_current_cell_id].pattern, _patterns[_current_cell_id].extra, cell, length, 0, 0, ovector, 255);
-				matches &= (matchResult >= 0) ^ _negative;
+				if (_or) {
+					matches |= (matchResult >= 0) ^ _negative;
+				}
+				else {
+					matches &= (matchResult >= 0) ^ _negative;
+				}
 #ifdef MOREDEBUG
 				if (matchResult < 0) {
 					fprintf(stderr, "tried to match :'");
