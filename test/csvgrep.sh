@@ -3,14 +3,14 @@
 RESULT=0
 
 function test_csvgrep() {
-	REF=`cat ../test-data/$1 | csvgrep $3`
+	REF=`cat data/$1 | csvgrep $3`
 	if (($? > 0)); then
 		echo "Test failed: " $1 " : " $2 " (csvgrep failed)" 
 		RESULT=1
 		return
 	fi
 
-	OUTPUT=`cat ../test-data/$1 | ./csvgrep $2`
+	OUTPUT=`cat data/$1 | ../bin/csvgrep $2`
 	if (($? > 0)); then
 		echo "Test failed: " $1 " : " $2 " (./csvgrep failed)" 
 		RESULT=1
@@ -27,13 +27,13 @@ function test_csvgrep() {
 }
 
 function test_csvgrep_xz() {
-	REF=`xzcat ../test-data/$1 | csvgrep $3 | md5sum`
+	REF=`xzcat data/$1 | csvgrep $3 | md5sum`
 	if (($? > 0)); then
 		echo "Test failed: " $1 " : " $2 " (csvgrep failed)" 
 		RESULT=1
 		return
 	fi
-	OUTPUT=`xzcat ../test-data/$1 | ./csvgrep $2 | md5sum`
+	OUTPUT=`xzcat data/$1 | ../bin/csvgrep $2 | md5sum`
 	if (($? > 0)); then
 		echo "Test failed: " $1 " : " $2 " (./csvgrep failed)" 
 		RESULT=1

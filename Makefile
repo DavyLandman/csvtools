@@ -3,6 +3,8 @@ LinkFlags=
 CSV_GREP_FILES = bin/obj/csvgrep.o bin/obj/csv_tokenizer.o
 CSV_CHOP_FILES = bin/obj/csvchop.o bin/obj/csv_tokenizer.o bin/obj/string_utils.o
 
+.PHONY: test clean
+
 all: bin/csvchop bin/csvgrep
 
 bin/csvchop: $(CSV_CHOP_FILES)
@@ -19,6 +21,10 @@ bin/obj/: bin/
 
 bin/:
 	mkdir bin/
+
+test:
+	cd test && ./csvgrep.sh
+	cd test && ./csvchop.sh
 
 clean:
 	rm -f bin/csv*
