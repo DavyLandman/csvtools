@@ -171,7 +171,7 @@ static size_t parse_config(int argc, char** argv, size_t chars_read) {
 
 	LOG_D("%s\n","Done parsing config params");	
 
-	_tokenizer = setup_tokenizer(_separator, _buffer, _cells);
+	_tokenizer = setup_tokenizer(_separator, _buffer, _cells,CELL_BUFFER_SIZE);
 
 	size_t consumed, cells_found;
 	bool last_full;

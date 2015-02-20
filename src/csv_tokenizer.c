@@ -9,6 +9,8 @@
 struct csv_tokenizer {
 	const char* restrict buffer;
 	Cell* restrict cells;
+	Cell const* restrict cells_end;
+
 	char separator;
 
 	// tokenizer state
@@ -19,11 +21,12 @@ struct csv_tokenizer {
 	bool in_quote;
 };
 
-struct csv_tokenizer* setup_tokenizer(char separator, const char* restrict buffer, Cell* restrict cells) {
+struct csv_tokenizer* setup_tokenizer(char separator, const char* restrict buffer, Cell* restrict cells, size_t cell_size) {
 	struct csv_tokenizer* tokenizer = malloc(sizeof(struct csv_tokenizer));
 	tokenizer->separator = separator;
 	tokenizer->buffer = buffer;
 	tokenizer->cells = cells;
+	tokenizer->cells_end = cells + cell_size - 2; // two room at the end
 
 	tokenizer->prev_newline = false;
 
@@ -142,6 +145,9 @@ AFTER_QUOTE:
 				exit(1);
 				return;
 			}
+			if (cell >= tokenizer->cells_end) {
+				break;
+			}
 		}
 		else if (*current_char == tokenizer->separator) {
 			// an empty cell somewhere in the middle
@@ -149,6 +155,9 @@ AFTER_QUOTE:
 			cell->length = 0;
 			cell++;
 			current_start = ++current_char;
+			if (cell >= tokenizer->cells_end) {
+				break;
+			}
 		}
 		else if (*current_char == '\n' || *current_char == '\r') {
 			// an newline means that we had an empty cell as last cell of the
@@ -168,6 +177,9 @@ AFTER_QUOTE:
 				break;
 			}
 			current_start = current_char;
+			if (cell >= tokenizer->cells_end) {
+				break;
+			}
 		}
 		else {
 			// start of a new field
@@ -226,6 +238,9 @@ FOUND_CELL_END:
 				fprintf(stderr, "Invalid character-2: \"%c\" found after end of cell\n",*current_char);
 				exit(1);
 				return;
+			}
+			if (cell >= tokenizer->cells_end) {
+				break;
 			}
 		}
 	}
