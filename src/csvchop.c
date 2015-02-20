@@ -10,8 +10,8 @@
 #include "csv_tokenizer.h"
 #include "debug.h"
 
-#define BUFFER_SIZE 1024*1024
-//#define BUFFER_SIZE 30
+//#define BUFFER_SIZE 1024*1024
+#define BUFFER_SIZE 30
 #define CELL_BUFFER_SIZE (BUFFER_SIZE / 2) + 2
 
 #define FREEARRAY(l,c) { for(size_t ___i = 0; ___i< c; ___i++) { free(l[___i]); } }
@@ -85,7 +85,7 @@ static void debug_cells(size_t total) {
 		}
 		else {
 			char* s = calloc(sizeof(char), current_cell->length + 1);
-			s[*current_cell_length] = '\0';
+			s[current_cell->length] = '\0';
 			memcpy(s, current_cell->start, current_cell->length);
 			LOG_V("Cell %zu : %s\n", (size_t)(current_cell - _cells), s);
 			free(s);
@@ -248,12 +248,97 @@ static size_t parse_config(int argc, char** argv, size_t chars_read) {
 	return consumed;
 }
 
+
 static void output_cells(size_t cells_found, bool last_full) {
+	LOG_D("Starting output: %zu (%d)\n", cells_found, last_full);
+	LOG_V("Entry: current_cell: %d\n", _current_cell_id);
+	Cell const * restrict current_cell = _cells;
+	Cell const * restrict cell_end = _cells + cells_found;
+
+	char const * restrict current_chunk_start = current_cell->start;
+	size_t current_chunk_length = 0;
+	int current_chunk_start_id = _current_cell_id;
+
+	while (current_cell < cell_end) {
+		//LOG_D("Current cell: %d %p\n", _current_cell_id,current_cell->start);
+		if (current_cell->start == NULL) {
+			if (_current_cell_id < _column_count) {
+				fprintf(stderr, "Not enough cells in this row, expect: %d, got: %d (cell %zu)\n", _column_count, _current_cell_id,  (size_t)(current_cell - _cells));
+				exit(1);
+				return;
+			}
+			if (current_chunk_start != NULL) {
+				current_chunk_length--; // take away newline 
+				if (current_chunk_start != _buffer || !_half_printed) {
+					if (current_chunk_start_id != _first_cell) {
+						fwrite(&(_separator),sizeof(char),1, stdout);
+					}
+				}
+				fwrite(current_chunk_start, sizeof(char), current_chunk_length, stdout);
+			}
+			fwrite(_newline, sizeof(char), _newline_length, stdout);
+			current_chunk_start = (current_cell + 1)->start;
+			current_chunk_length = 0;
+			current_chunk_start_id = 0;
+			_current_cell_id = -1;
+		}
+		if (_current_cell_id >= _column_count) {
+			fprintf(stderr, "Too many cells in this row, expect: %d, got: %d (cell: %zu)\n", _column_count, _current_cell_id, (size_t)(current_cell - _cells));
+			exit(1);
+			return;
+		}
+		else if (_keep[_current_cell_id]) {
+			current_chunk_length += 1 + current_cell->length;
+		}
+		else {
+			// a column to drop, so lets write the previous chunk
+			if (_current_cell_id >= _first_cell && current_chunk_length > 0) {
+				current_chunk_length--; // take away last seperator
+				if (current_chunk_start != _buffer || !_half_printed) {
+					if (current_chunk_start_id != _first_cell) {
+						fwrite(&(_separator),sizeof(char),1, stdout);
+					}
+				}
+				fwrite(current_chunk_start, sizeof(char), current_chunk_length, stdout);
+			}
+			// begining of the line, nothing happening
+			current_chunk_start = (current_cell + 1)->start;
+			current_chunk_length = 0;
+			current_chunk_start_id = _current_cell_id + 1;
+		}
+
+		_current_cell_id++;
+		current_cell++;
+	}
+	if (current_chunk_length > 0) {
+		if (last_full) {
+			current_chunk_length--; // take away newline 
+		}
+		if (current_chunk_start != _buffer || !_half_printed) {
+			if (current_chunk_start_id != _first_cell) {
+				fwrite(&(_separator),sizeof(char),1, stdout);
+			}
+		}
+		fwrite(current_chunk_start, sizeof(char), current_chunk_length, stdout);
+	}
+	if (!last_full) {
+
+		_half_printed = true;
+		_current_cell_id--;
+	}
+	else {
+		_half_printed = false;
+	}
+	LOG_V("Exit: current_cell: %d\n", _current_cell_id);
+}
+
+static void output_cells2(size_t cells_found, bool last_full) {
 	LOG_D("Starting output: %zu (%d)\n", cells_found, last_full);
 	LOG_V("Entry: current_cell: %d\n", _current_cell_id);
 	Cell const * current_cell = _cells;
 	Cell const * cell_end = _cells + cells_found;
 	while (current_cell < cell_end) {
+		LOG_D("Current cell: %d %p\n", _current_cell_id,current_cell->start);
 		if (_current_cell_id > _column_count) {
 			fprintf(stderr, "Too many cells in this row, expect: %d, got: %d (cell: %zu)\n", _column_count, _current_cell_id, (size_t)(current_cell - _cells));
 			exit(1);

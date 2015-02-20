@@ -46,6 +46,7 @@ function test_csvchop_xz() {
 test_csvchop "simple.csv" "-d a" "-C a" 
 test_csvchop "simple.csv" "-d a,b" "-C a,b" 
 test_csvchop "simple.csv" "-k a,b" "-c a,b" 
+test_csvchop "simple.csv" "-k a,e" "-c a,e" 
 test_csvchop "corners.csv" "-k a,b" "-c a,b" 
 test_csvchop "corners.csv" "-d a,b" "-C a,b" 
 test_csvchop "large-fields.csv" "-k column1" "-c column1" 
