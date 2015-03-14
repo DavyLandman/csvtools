@@ -5,6 +5,13 @@
 #include "debug.h"
 #include "csv_tokenizer.h"
 
+enum tokenizer_state {
+	FRESH,
+	PREV_NEWLINE,
+	PREV_CELL,
+	PREV_QUOTE,
+	IN_QUOTE
+};
 
 struct csv_tokenizer {
 	const char* restrict buffer;
@@ -13,12 +20,7 @@ struct csv_tokenizer {
 
 	char separator;
 
-	// tokenizer state
-	bool prev_newline;
-	bool prev_cell;
-
-	bool prev_quote;
-	bool in_quote;
+	enum tokenizer_state state;
 };
 
 struct csv_tokenizer* setup_tokenizer(char separator, const char* restrict buffer, Cell* restrict cells, size_t cell_size) {
@@ -28,11 +30,7 @@ struct csv_tokenizer* setup_tokenizer(char separator, const char* restrict buffe
 	tokenizer->cells = cells;
 	tokenizer->cells_end = cells + cell_size - 2; // two room at the end
 
-	tokenizer->prev_newline = false;
-
-	tokenizer->prev_quote = false;
-	tokenizer->prev_cell = false;
-	tokenizer->in_quote = false;
+	tokenizer->state = FRESH;
 	return tokenizer;
 }
 
@@ -47,41 +45,42 @@ void tokenize_cells(struct csv_tokenizer* restrict tokenizer, size_t buffer_offs
 	const char* restrict current_start = current_char;
 
 	Cell* restrict cell = tokenizer->cells;
-	LOG_V("tokenizer-start\t%d, %d, %d, %d %c (%lu)\n", tokenizer->prev_quote, tokenizer->in_quote, tokenizer->prev_newline, tokenizer->prev_cell, *current_char, buffer_offset );
+	LOG_V("tokenizer-start\t%d %c (%lu)\n", tokenizer->state, *current_char, buffer_offset );
 
 	*last_full = true;
-	if (tokenizer->prev_quote) {
-		tokenizer->prev_quote = false;
-		tokenizer->in_quote = false;
+	enum tokenizer_state old_state = tokenizer->state;
+	tokenizer->state = FRESH;
+	switch (old_state) {
+	case PREV_QUOTE:
 		if (*current_char == '"') {
 			// escaped quote so we don't have to decrease the first char
 			goto IN_QUOTE;
 		}
 		current_char--; // jump back, since starts with increment
 		goto AFTER_QUOTE;
-	}
-	if (tokenizer->in_quote) {
-		tokenizer->in_quote = false;
+
+	case IN_QUOTE:
 		current_char--; // jump back, since the loops starts with increment
 		goto IN_QUOTE;
-	}
-	else if (tokenizer->prev_newline) {
-		tokenizer->prev_newline = false;
+	
+	case PREV_NEWLINE:
 		if ((*current_char == '\n' || *current_char == '\r')) {
 			while (++current_char < char_end && (*current_char == '\n' || *current_char == '\r'));
 		}
-	}
-	else if (tokenizer->prev_cell) {
-		tokenizer->prev_cell = false;
+		break;
+		
+	case PREV_CELL:
 		current_char--; // jump back, since the loops starts with increment
 		goto NORMAL_CELL;
-	}
-	else if (*current_char == tokenizer->separator) {
-		cell->start = current_start;
-		cell->length = 0;
-		cell++;
-		current_char++;
-		current_start = current_char;
+
+	default:
+		if (*current_char == tokenizer->separator) {
+			cell->start = current_start;
+			cell->length = 0;
+			cell++;
+			current_char++;
+			current_start = current_char;
+		}
 	}
 
 	while (current_char < char_end) {
@@ -92,7 +91,7 @@ IN_QUOTE:
 					const char* peek = current_char + 1;
 					if (peek == char_end) {
 						// at the end of stream and not sure if escaped or not
-						tokenizer->prev_quote = true;
+						tokenizer->state = PREV_QUOTE;
 						*last_full = false;
 						break;
 					}
@@ -115,7 +114,9 @@ AFTER_QUOTE:
 
 			if (current_char == char_end) {
 				if (*(current_char-1) != '"' || *(current_char-2) == '"' ||  current_char - 1 == current_start) {
-					tokenizer->in_quote = true;
+					if (tokenizer->state == FRESH) {
+						tokenizer->state = IN_QUOTE;
+					}
 					*last_full = false;
 					break;
 				}
@@ -131,7 +132,7 @@ AFTER_QUOTE:
 				while (++current_char < char_end && (*current_char == '\n' || *current_char == '\r'));
 				if (current_char == char_end) {
 					// we stopped inside a new_line
-					tokenizer->prev_newline = true;
+					tokenizer->state = PREV_NEWLINE;
 					break;
 				}
 				current_start = current_char;
@@ -173,7 +174,7 @@ AFTER_QUOTE:
 			while (++current_char < char_end && (*current_char == '\n' || *current_char == '\r'));
 			if (current_char == char_end) {
 				// we stopped inside a new_line
-				tokenizer->prev_newline = true;
+				tokenizer->state = PREV_NEWLINE;
 				break;
 			}
 			current_start = current_char;
@@ -212,7 +213,7 @@ FOUND_CELL_END:
 
 			if (current_char == char_end) {
 				if (*(current_char-1) != tokenizer->separator) {
-					tokenizer->prev_cell = true;
+					tokenizer->state = PREV_CELL;
 					*last_full = false;
 					break;
 				}
@@ -225,7 +226,7 @@ FOUND_CELL_END:
 				while (++current_char < char_end && (*current_char == '\n' || *current_char == '\r'));
 				if (current_char == char_end) {
 					// we stopped inside a new_line
-					tokenizer->prev_newline = true;
+					tokenizer->state = PREV_NEWLINE;
 					break;
 				}
 				current_start = current_char;
@@ -247,5 +248,5 @@ FOUND_CELL_END:
 	*buffer_consumed = (size_t)(current_char - tokenizer->buffer);
 	*cells_found = (size_t)(cell - tokenizer->cells);
 
-	LOG_V("tokenizer-done\t%d, %d, %d, %d %c (%lu) %d\n", tokenizer->prev_quote, tokenizer->in_quote, tokenizer->prev_newline, tokenizer->prev_cell, *(current_char-1), *buffer_consumed  , *last_full);
+	LOG_V("tokenizer-done\t%d, %c (%lu) %d\n", tokenizer->state,  *(current_char-1), *buffer_consumed  , *last_full);
 }
