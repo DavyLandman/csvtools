@@ -10,8 +10,9 @@
 #include "csv_tokenizer.h"
 #include "debug.h"
 
-//#define BUFFER_SIZE 1024*1024
-#define BUFFER_SIZE 30
+#define BUFFER_SIZE 1024*1024
+//#define BUFFER_SIZE 30
+//#define BUFFER_SIZE 72
 #define CELL_BUFFER_SIZE (BUFFER_SIZE / 2) + 2
 
 #define FREEARRAY(l,c) { for(size_t ___i = 0; ___i< c; ___i++) { free(l[___i]); } }
@@ -311,9 +312,7 @@ static void output_cells(size_t cells_found, bool last_full) {
 		current_cell++;
 	}
 	if (current_chunk_length > 0) {
-		if (last_full) {
-			current_chunk_length--; // take away newline 
-		}
+		current_chunk_length--; // fix of by one error 
 		if (current_chunk_start != _buffer || !_half_printed) {
 			if (current_chunk_start_id != _first_cell) {
 				fwrite(&(_separator),sizeof(char),1, stdout);
