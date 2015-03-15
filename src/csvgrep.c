@@ -115,11 +115,11 @@ static void print_help() {
 	fprintf(stderr, "  Which character to use as separator (default is ,)\n");
 	fprintf(stderr, "-p column/pattern/\n");
 	fprintf(stderr, "  Multiple -p are allowed, they work as an AND \n");
-	fprintf(stderr, "-c ,\n");
+	fprintf(stderr, "-c \n");
 	fprintf(stderr, "  Only count the rows that match\n");
-	fprintf(stderr, "-o ,\n");
+	fprintf(stderr, "-o \n");
 	fprintf(stderr, " Make the match into an OR, changes the behavior of -p and -v\n");
-	fprintf(stderr, "-v ,\n");
+	fprintf(stderr, "-v \n");
 	fprintf(stderr, " Print only the rows that did not match all patterns\n");
 }
 
