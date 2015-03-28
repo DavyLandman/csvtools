@@ -73,6 +73,12 @@ int main(int argc, char** argv) {
 	if (config.keep != NULL) {
 		free(config.keep);
 	}
+	if (config.source != stdin) {
+		fclose(config.source);
+	}
+	if (config.target != stdout) {
+		fclose(config.target);
+	}
 	return 0;
 }
 
@@ -103,6 +109,10 @@ static void debug_cells(size_t total) {
 }
 
 static void print_help() {
+	fprintf(stderr, "-i filename\n");
+	fprintf(stderr, "\tFile to read from, default is stdin\n");
+	fprintf(stderr, "-o filename\n");
+	fprintf(stderr, "\tFile to write to, default is stdout\n");
 	fprintf(stderr, "-s ,\n");
 	fprintf(stderr, "\tWhich character to use as separator (default is ,)\n");
 	fprintf(stderr, "-k column,names,to,keep\n");
@@ -132,8 +142,11 @@ static void parse_config(int argc, char** argv) {
 	preconfig.keep_column_indexes = NULL;
 	preconfig.drop_column_indexes = NULL;
 
+	const char* source_file_name = NULL;
+	const char* target_file_name = NULL;
+
 	char c;
-	while ((c = getopt (argc, argv, "s:k:d:K:D:h")) != -1) {
+	while ((c = getopt (argc, argv, "s:k:d:K:D:i:o:h")) != -1) {
 		switch (c) {
 			case 's': 
 				config.separator = optarg[0];
@@ -168,6 +181,12 @@ static void parse_config(int argc, char** argv) {
 					break;
 				}
 				break;
+			case 'i':
+				source_file_name = optarg;
+				break;
+			case 'o':
+				target_file_name = optarg;
+				break;
 			case '?':
 			case 'h':
 				print_help();
@@ -185,6 +204,25 @@ static void parse_config(int argc, char** argv) {
 	LOG_D("%s\n","Done parsing config params");	
 
 	_tokenizer = setup_tokenizer(config.separator, _buffer, _cells,CELL_BUFFER_SIZE);
+	if (source_file_name) {
+		config.source = fopen(source_file_name, "r");
+		if (!config.source) {
+			fprintf(stderr, "Could not open file %s for reading\n", source_file_name);
+			print_help();
+			exit(1);
+		}
+	}
+	if (target_file_name) {
+		config.target = fopen(target_file_name, "w");
+		if (!config.target) {
+			fprintf(stderr, "Could not open file %s for writing\n", target_file_name);
+			if (source_file_name) {
+				fclose(config.source);
+			}
+			print_help();
+			exit(1);
+		}
+	}
 }
 
 static void finish_config(size_t cells_found) {
