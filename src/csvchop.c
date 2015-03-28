@@ -260,6 +260,11 @@ static void finish_config(size_t cells_found) {
 	}
 	else if (preconfig.keep_column_indexes) {
 		for (size_t i = 0; i < preconfig.cuts_defined; i++) {
+			if (preconfig.keep_column_indexes[i] > config.column_count) {
+				fprintf(stderr, "There are only %d columns, %d is to high", config.column_count + 1, preconfig.keep_column_indexes[i]);
+				exit(1);
+				return;
+			}
 			config.keep[preconfig.keep_column_indexes[i]] = true;
 		}
 		free(preconfig.keep_column_indexes);
@@ -269,6 +274,11 @@ static void finish_config(size_t cells_found) {
 			config.keep[c] = true;
 		}
 		for (size_t i = 0; i < preconfig.cuts_defined; i++) {
+			if (preconfig.drop_column_indexes[i] > config.column_count) {
+				fprintf(stderr, "There are only %d columns, %d is to high", config.column_count + 1, preconfig.drop_column_indexes[i]);
+				exit(1);
+				return;
+			}
 			config.keep[preconfig.drop_column_indexes[i]] = false;
 		}
 		free(preconfig.drop_column_indexes);
