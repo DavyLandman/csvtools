@@ -76,8 +76,8 @@ int main(int argc, char** argv) {
 	if (config.source != stdin) {
 		fclose(config.source);
 	}
-	if (config.target != stdout) {
-		fclose(config.target);
+	if (stdout != stdout) {
+		fclose(stdout);
 	}
 	return 0;
 }
@@ -109,10 +109,8 @@ static void debug_cells(size_t total) {
 }
 
 static void print_help() {
-	fprintf(stderr, "-i filename\n");
-	fprintf(stderr, "\tFile to read from, default is stdin\n");
-	fprintf(stderr, "-o filename\n");
-	fprintf(stderr, "\tFile to write to, default is stdout\n");
+	fprintf(stderr,"usage: csvcut [OPTIONS] [FILE]");
+	fprintf(stderr,"options:");
 	fprintf(stderr, "-s ,\n");
 	fprintf(stderr, "\tWhich character to use as separator (default is ,)\n");
 	fprintf(stderr, "-k column,names,to,keep\n");
@@ -134,16 +132,12 @@ static struct {
 static void parse_config(int argc, char** argv) {
 	config.separator = ',';
 	config.source = stdin;
-	config.target = stdout;
 
 	preconfig.cuts_defined = 0;
 	preconfig.keep_column_names = NULL;
 	preconfig.drop_column_names = NULL;
 	preconfig.keep_column_indexes = NULL;
 	preconfig.drop_column_indexes = NULL;
-
-	const char* source_file_name = NULL;
-	const char* target_file_name = NULL;
 
 	char c;
 	while ((c = getopt (argc, argv, "s:k:d:K:D:i:o:h")) != -1) {
@@ -181,12 +175,6 @@ static void parse_config(int argc, char** argv) {
 					break;
 				}
 				break;
-			case 'i':
-				source_file_name = optarg;
-				break;
-			case 'o':
-				target_file_name = optarg;
-				break;
 			case '?':
 			case 'h':
 				print_help();
@@ -201,28 +189,17 @@ static void parse_config(int argc, char** argv) {
 		exit(1);
 	}
 
+	if (optind < argc) {
+		config.source = fopen(argv[optind], "r");
+		if (!config.source) {
+			fprintf(stderr, "Could not open file %s for reading\n", argv[optind]);
+			exit(1);
+		}
+	}
+
 	LOG_D("%s\n","Done parsing config params");	
 
 	_tokenizer = setup_tokenizer(config.separator, _buffer, _cells,CELL_BUFFER_SIZE);
-	if (source_file_name) {
-		config.source = fopen(source_file_name, "r");
-		if (!config.source) {
-			fprintf(stderr, "Could not open file %s for reading\n", source_file_name);
-			print_help();
-			exit(1);
-		}
-	}
-	if (target_file_name) {
-		config.target = fopen(target_file_name, "w");
-		if (!config.target) {
-			fprintf(stderr, "Could not open file %s for writing\n", target_file_name);
-			if (source_file_name) {
-				fclose(config.source);
-			}
-			print_help();
-			exit(1);
-		}
-	}
 }
 
 static void finish_config(size_t cells_found) {
@@ -319,12 +296,12 @@ static void output_cells(size_t cells_found, bool last_full) {
 				current_chunk_length--; // take away newline 
 				if (current_chunk_start != _buffer || !_half_printed) {
 					if (current_chunk_start_id != config.first_cell) {
-						fwrite(&(config.separator),sizeof(char),1, config.target);
+						fwrite(&(config.separator),sizeof(char),1, stdout);
 					}
 				}
-				fwrite(current_chunk_start, sizeof(char), current_chunk_length, config.target);
+				fwrite(current_chunk_start, sizeof(char), current_chunk_length, stdout);
 			}
-			fwrite(config.newline, sizeof(char), config.newline_length, config.target);
+			fwrite(config.newline, sizeof(char), config.newline_length, stdout);
 			current_chunk_start = (current_cell + 1)->start;
 			current_chunk_length = 0;
 			current_chunk_start_id = 0;
@@ -344,10 +321,10 @@ static void output_cells(size_t cells_found, bool last_full) {
 				current_chunk_length--; // take away last seperator
 				if (current_chunk_start != _buffer || !_half_printed) {
 					if (current_chunk_start_id != config.first_cell) {
-						fwrite(&(config.separator),sizeof(char),1, config.target);
+						fwrite(&(config.separator),sizeof(char),1, stdout);
 					}
 				}
-				fwrite(current_chunk_start, sizeof(char), current_chunk_length, config.target);
+				fwrite(current_chunk_start, sizeof(char), current_chunk_length, stdout);
 			}
 			// begining of the line, nothing happening
 			current_chunk_start = (current_cell + 1)->start;
@@ -362,10 +339,10 @@ static void output_cells(size_t cells_found, bool last_full) {
 		current_chunk_length--; // fix of by one error 
 		if (current_chunk_start != _buffer || !_half_printed) {
 			if (current_chunk_start_id != config.first_cell) {
-				fwrite(&(config.separator),sizeof(char),1, config.target);
+				fwrite(&(config.separator),sizeof(char),1, stdout);
 			}
 		}
-		fwrite(current_chunk_start, sizeof(char), current_chunk_length, config.target);
+		fwrite(current_chunk_start, sizeof(char), current_chunk_length, stdout);
 	}
 	if (!last_full) {
 
