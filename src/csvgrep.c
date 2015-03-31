@@ -22,62 +22,70 @@ static Cell _cells[CELL_BUFFER_SIZE];
 
 static int _have_jit = 0;
 
-static char _separator = ',';
-static char _newline[2];
-static size_t _newline_length = 0;
+static struct {
+	FILE* source;
+	FILE* target;
+	char separator;
+	char newline[2];
+	size_t newline_length;
 
-static bool _count_only = false;
-static bool _negative = false;
-static bool _or = false;
-static Regex* _patterns = NULL;
+	bool count_only;
+	bool negative;
+	bool or;
+	Regex* patterns;
 
-static int _column_count = 0;
-static long long _count = 0;
+	int column_count;
+} config;
 
-static size_t parse_config(int argc, char** argv, size_t chars_read);
+static long long _count;
+
+static void parse_config(int argc, char** argv);
+static size_t finish_config(size_t cells_found);
 
 static void output_cells(size_t cells_found, size_t offset, bool last_full);
 static void debug_cells(size_t total);
 
 int main(int argc, char** argv) {
-	size_t chars_read;
-	bool first = true;
+
+	parse_config(argc, argv);
 
 	pcre_config(PCRE_CONFIG_JIT, &_have_jit);
 	if (!_have_jit) {
 		fprintf(stderr, "I am running without PCRE-JIT support, expect less performance.\n");
 	}
 
-	while ((chars_read = fread(_buffer, 1, BUFFER_SIZE, stdin)) > 0) {
+	size_t chars_read;
+	bool first = true;
+	while ((chars_read = fread(_buffer, 1, BUFFER_SIZE, config.source)) > 0) {
 		LOG_D("New data read: %zu\n", chars_read);
 		size_t buffer_consumed = 0;
 		size_t cells_found = 0;
 		bool last_full = true;
 
-		if (first) {
-			first = false;
-			buffer_consumed = parse_config(argc, argv, chars_read);
-			LOG_D("Finished init : %zu\n", buffer_consumed);
-		}
 
 		while (buffer_consumed < chars_read) {
 			tokenize_cells(_tokenizer, buffer_consumed, chars_read, &buffer_consumed, &cells_found, &last_full);
-
 			LOG_D("Processed: %zu, Cells: %zu\n", buffer_consumed, cells_found);
 			debug_cells(cells_found);
-			output_cells(cells_found, 0, last_full);
+
+			size_t cell_offset = 0;
+			if (first) {
+				first = false;
+				cell_offset = finish_config(cells_found);
+			}
+			output_cells(cells_found, cell_offset, last_full);
 		}
 	}
-	if (_count_only) {
-		fprintf(stdout, "%llu\n", _count);
+	if (config.count_only) {
+		fprintf(config.target, "%llu\n", _count);
 	}
 	if (_tokenizer != NULL) {
 		free_tokenizer(_tokenizer);
 	}
-	if (_patterns != NULL) {
-		for (int c = 0; c < _column_count; c++) {
-			pcre_free_study((pcre_extra*)_patterns[c].extra);
-			pcre_free((pcre*)_patterns[c].pattern);
+	if (config.patterns != NULL) {
+		for (int c = 0; c < config.column_count; c++) {
+			pcre_free_study((pcre_extra*)(config.patterns[c].extra));
+			pcre_free((pcre*)(config.patterns[c].pattern));
 
 		}
 	}
@@ -123,38 +131,52 @@ static void print_help() {
 	fprintf(stderr, " Print only the rows that did not match all patterns\n");
 }
 
-static size_t parse_config(int argc, char** argv, size_t chars_read) {
-	size_t n_patterns = 0;
-	char ** columns = malloc(sizeof(char*));
-	char ** patterns = malloc(sizeof(char*));
-	size_t * column_lengths = malloc(sizeof(size_t*));
+static struct {
+	size_t n_patterns;
+	char ** columns;
+	char ** patterns;
+	size_t * column_lengths;
+} half_config;
+
+static void parse_config(int argc, char** argv) {
+	config.source = stdin;
+	config.target = stdout;
+	config.separator = ',';
+	config.count_only = false;
+	config.negative = false;
+	config.or = false;
+
+	half_config.n_patterns = 0;
+	half_config.columns = malloc(sizeof(char*));
+	half_config.patterns = malloc(sizeof(char*));
+	half_config.column_lengths = malloc(sizeof(size_t*));
 
 	char c;
 	while ((c = getopt (argc, argv, "s:p:cvo")) != -1) {
 		switch (c) {
 			case 's': 
-				_separator = optarg[0];
+				config.separator = optarg[0];
 				break;
 			case 'c': 
-				_count_only = true;
-				break;
-			case 'p':
-				n_patterns++;
-				if (n_patterns >= 1) {
-					columns = realloc(columns, sizeof(char*) * n_patterns);
-					patterns = realloc(patterns, sizeof(char*) * n_patterns);
-					column_lengths = realloc(column_lengths, sizeof(size_t*) * n_patterns);
-				}
-				LOG_V("Got pattern: %s\n", optarg);
-				columns[n_patterns - 1] = strtok(optarg, "/");
-				patterns[n_patterns - 1] = strtok(NULL, "/");
-				column_lengths[n_patterns - 1] = strlen(columns[n_patterns - 1]);
+				config.count_only = true;
 				break;
 			case 'v':
-				_negative = true;
+				config.negative = true;
 				break;
 			case 'o':
-				_or = true;
+				config.or = true;
+				break;
+			case 'p':
+				half_config.n_patterns++;
+				if (half_config.n_patterns >= 1) {
+					half_config.columns = realloc(half_config.columns, sizeof(char*) * half_config.n_patterns);
+					half_config.patterns = realloc(half_config.patterns, sizeof(char*) * half_config.n_patterns);
+					half_config.column_lengths = realloc(half_config.column_lengths, sizeof(size_t*) * half_config.n_patterns);
+				}
+				LOG_V("Got pattern: %s\n", optarg);
+				half_config.columns[half_config.n_patterns - 1] = strtok(optarg, "/");
+				half_config.patterns[half_config.n_patterns - 1] = strtok(NULL, "/");
+				half_config.column_lengths[half_config.n_patterns - 1] = strlen(half_config.columns[half_config.n_patterns - 1]);
 				break;
 			case '?':
 			case 'h':
@@ -164,7 +186,7 @@ static size_t parse_config(int argc, char** argv, size_t chars_read) {
 		}
 	}
 
-	if (n_patterns == 0) {
+	if (half_config.n_patterns == 0) {
 		fprintf(stderr, "You should at least provide one pattern\n");
 		print_help();
 		exit(1);
@@ -172,57 +194,54 @@ static size_t parse_config(int argc, char** argv, size_t chars_read) {
 
 	LOG_D("%s\n","Done parsing config params");	
 
-	_tokenizer = setup_tokenizer(_separator, _buffer, _cells, CELL_BUFFER_SIZE);
+	_tokenizer = setup_tokenizer(config.separator, _buffer, _cells, CELL_BUFFER_SIZE);
 
-	size_t consumed, cells_found;
-	bool last_full;
-	tokenize_cells(_tokenizer, 0, chars_read, &consumed, &cells_found, &last_full);
+}
 
-	LOG_D("Processed: %zu, Cells: %zu\n", consumed, cells_found);
-	debug_cells(cells_found);
+static size_t finish_config(size_t cells_found) {
 
 	Cell* current_cell = _cells;
 	while (current_cell < (_cells + cells_found) && current_cell->start != NULL) {
-		if (!_count_only) {
+		if (!config.count_only) {
 			// also immediatly print the header
 			if (current_cell != _cells) {
-				fwrite(&(_separator),sizeof(char),1, stdout);
+				fwrite(&(config.separator),sizeof(char),1, config.target);
 			}
-			fwrite(current_cell->start, sizeof(char), current_cell->length, stdout);
+			fwrite(current_cell->start, sizeof(char), current_cell->length, config.target);
 		}
 		current_cell++;
 	}
-	_column_count = (int)(current_cell - _cells);
+	config.column_count = (int)(current_cell - _cells);
 
-	const char* new_line = _cells[_column_count-1].start + _cells[_column_count - 1].length;
-	_newline[0] = new_line[0];
-	_newline_length = 1;
+	const char* new_line = _cells[config.column_count-1].start + _cells[config.column_count - 1].length;
+	config.newline[0] = new_line[0];
+	config.newline_length = 1;
 	if (new_line[1] == '\n' || new_line[0] == '\r') {
-		_newline[1] = '\n';
-		_newline_length = 2;
+		config.newline[1] = '\n';
+		config.newline_length = 2;
 	}
-	if (!_count_only) {
-		fwrite(_newline, sizeof(char), _newline_length, stdout);
+	if (!config.count_only) {
+		fwrite(config.newline, sizeof(char), config.newline_length, config.target);
 	}
 
-	_patterns = calloc(sizeof(Regex),_column_count);
-	memset(_patterns, 0, sizeof(Regex) * _column_count);
-	for (int c = 0; c < _column_count; c++) {
-		for (size_t pat = 0;  pat < n_patterns; pat++) {
-			if (_cells[c].length == column_lengths[pat]) {
-				if (strncmp(_cells[c].start, columns[pat], column_lengths[pat])==0) {
-					LOG_V("Adding pattern %s for column: %s (%d)\n", patterns[pat], columns[pat],c);
+	config.patterns = calloc(sizeof(Regex),config.column_count);
+	memset(config.patterns, 0, sizeof(Regex) * config.column_count);
+	for (int c = 0; c < config.column_count; c++) {
+		for (size_t pat = 0;  pat < half_config.n_patterns; pat++) {
+			if (_cells[c].length == half_config.column_lengths[pat]) {
+				if (strncmp(_cells[c].start, half_config.columns[pat], half_config.column_lengths[pat])==0) {
+					LOG_V("Adding pattern %s for column: %s (%d)\n", half_config.patterns[pat], half_config.columns[pat],c);
 					// we have found the column
 					const char *pcreErrorStr;
 					int pcreErrorOffset;
-					_patterns[c].pattern = pcre_compile(patterns[pat],PCRE_DOLLAR_ENDONLY |  PCRE_DOTALL | PCRE_NO_UTF8_CHECK, &pcreErrorStr, &pcreErrorOffset, NULL); 
-					if(_patterns[c].pattern == NULL) {
-						fprintf(stderr, "ERROR: Could not compile '%s': %s\n", patterns[pat], pcreErrorStr);
+					config.patterns[c].pattern = pcre_compile(half_config.patterns[pat],PCRE_DOLLAR_ENDONLY |  PCRE_DOTALL | PCRE_NO_UTF8_CHECK, &pcreErrorStr, &pcreErrorOffset, NULL); 
+					if(config.patterns[c].pattern == NULL) {
+						fprintf(stderr, "ERROR: Could not compile '%s': %s\n", half_config.patterns[pat], pcreErrorStr);
 						exit(1);
 					}
-					_patterns[c].extra = pcre_study(_patterns[c].pattern, _have_jit ? PCRE_STUDY_JIT_COMPILE : 0, &pcreErrorStr);
-					if(_patterns[c].extra == NULL) {
-						fprintf(stderr, "ERROR: Could not study '%s': %s\n", patterns[pat], pcreErrorStr);
+					config.patterns[c].extra = pcre_study(config.patterns[c].pattern, _have_jit ? PCRE_STUDY_JIT_COMPILE : 0, &pcreErrorStr);
+					if(config.patterns[c].extra == NULL) {
+						fprintf(stderr, "ERROR: Could not study '%s': %s\n", half_config.patterns[pat], pcreErrorStr);
 						exit(1);
 					}
 					break;
@@ -232,12 +251,11 @@ static size_t parse_config(int argc, char** argv, size_t chars_read) {
 	}
 
 
-	free(columns);
-	free(patterns);
-	free(column_lengths);
+	free(half_config.columns);
+	free(half_config.patterns);
+	free(half_config.column_lengths);
 
-	output_cells(cells_found, _column_count + 1, last_full);
-	return consumed;
+	return config.column_count + 1 ;
 }
 
 static char const * unquote(char const* restrict quoted, size_t* restrict length);
@@ -261,7 +279,7 @@ static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 	Cell const* restrict current_cell = _cells + offset;
 	Cell const* restrict cells_end = _cells + cells_found;
 
-	bool matches = !_or;
+	bool matches = !config.or;
 	if (_half_line) {
 		matches = _prev_matches;
 	}
@@ -270,27 +288,27 @@ static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 	size_t current_line_length = 0;
 
 	while (current_cell < cells_end) {
-		if (_current_cell_id > _column_count) {
-			fprintf(stderr, "Too many cells in this row, expect: %d, got: %d (cell: %zu)\n", _column_count, _current_cell_id, (size_t)(current_cell - _cells));
+		if (_current_cell_id > config.column_count) {
+			fprintf(stderr, "Too many cells in this row, expect: %d, got: %d (cell: %zu)\n", config.column_count, _current_cell_id, (size_t)(current_cell - _cells));
 			exit(1);
 			return;
 		}
 		if (current_cell->start == NULL) {
-			if (_current_cell_id == _column_count) {
+			if (_current_cell_id == config.column_count) {
 				// end of the line
 				if (matches) {
-					if (_count_only) {
+					if (config.count_only) {
 						_prev_line_length = 0;
 						_count++;
 					}
 					else {
 						if (first_line && _half_line) {
-							fwrite(_prev_line, sizeof(char), _prev_line_length, stdout);
+							fwrite(_prev_line, sizeof(char), _prev_line_length, config.target);
 							first_line = false;
 							_prev_line_length = 0;
 						}
-						fwrite(current_line_start, sizeof(char), current_line_length, stdout);
-						fwrite(_newline, sizeof(char), _newline_length, stdout);
+						fwrite(current_line_start, sizeof(char), current_line_length, config.target);
+						fwrite(config.newline, sizeof(char), config.newline_length, config.target);
 					}
 				}
 				if (first_line) {
@@ -299,20 +317,20 @@ static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 				current_line_start = (current_cell + 1)->start;
 				current_line_length = 0;
 				_current_cell_id = -1;
-				matches = !_or;
+				matches = !config.or;
 			}
-			else if (_current_cell_id < _column_count) {
-				fprintf(stderr, "Not enough cells in this row, expect: %d, got: %d (cell %zu)\n", _column_count, _current_cell_id,  (size_t)(current_cell - _cells));
+			else if (_current_cell_id < config.column_count) {
+				fprintf(stderr, "Not enough cells in this row, expect: %d, got: %d (cell %zu)\n", config.column_count, _current_cell_id,  (size_t)(current_cell - _cells));
 				exit(1);
 				return;
 			}
 		}
-		else if (matches || _or) { // only if we have a match does it make sense to test other cells
+		else if (matches || config.or) { // only if we have a match does it make sense to test other cells
 			current_line_length += 1 + current_cell->length;
 			if (_current_cell_id == 0 || current_cell == (_cells + offset)) {
 				current_line_length--; // the first doesn't have a separator
 			}
-			if (_patterns[_current_cell_id].pattern != NULL) {
+			if (config.patterns[_current_cell_id].pattern != NULL) {
 				char const* restrict cell = current_cell->start;
 				size_t length = current_cell->length;
 				if (current_cell == (cells_end-1) && !last_full) {
@@ -344,12 +362,12 @@ static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 					}
 				}
 				int ovector[255];
-				int matchResult = pcre_exec(_patterns[_current_cell_id].pattern, _patterns[_current_cell_id].extra, cell, length, 0, 0, ovector, 255);
-				if (_or) {
-					matches |= (matchResult >= 0) ^ _negative;
+				int matchResult = pcre_exec(config.patterns[_current_cell_id].pattern, config.patterns[_current_cell_id].extra, cell, length, 0, 0, ovector, 255);
+				if (config.or) {
+					matches |= (matchResult >= 0) ^ config.negative;
 				}
 				else {
-					matches &= (matchResult >= 0) ^ _negative;
+					matches &= (matchResult >= 0) ^ config.negative;
 				}
 #ifdef MOREDEBUG
 				if (matchResult < 0) {
@@ -382,8 +400,8 @@ static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 			_prev_line_length += current_line_length;
 			assert(_prev_line_length < (BUFFER_SIZE * 2));
 			memcpy(_prev_line + old_line_length, current_line_start, sizeof(char) * current_line_length);
-			if (last_full && _current_cell_id != _column_count) { // the , gets eaten away
-				_prev_line[_prev_line_length++] = _separator;
+			if (last_full && _current_cell_id != config.column_count) { // the , gets eaten away
+				_prev_line[_prev_line_length++] = config.separator;
 			}
 #ifdef MOREDEBUG
 			fprintf(stderr, "current prev line :'");
