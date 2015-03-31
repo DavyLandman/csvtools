@@ -88,6 +88,9 @@ int main(int argc, char** argv) {
 
 		}
 	}
+	if (config.source != stdin) {
+		fclose(config.source);
+	}
 	return 0;
 }
 
