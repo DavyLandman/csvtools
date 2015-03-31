@@ -24,7 +24,6 @@ static int _have_jit = 0;
 
 static struct {
 	FILE* source;
-	FILE* target;
 	char separator;
 	char newline[2];
 	size_t newline_length;
@@ -77,7 +76,7 @@ int main(int argc, char** argv) {
 		}
 	}
 	if (config.count_only) {
-		fprintf(config.target, "%llu\n", _count);
+		fprintf(stdout, "%llu\n", _count);
 	}
 	if (_tokenizer != NULL) {
 		free_tokenizer(_tokenizer);
@@ -119,16 +118,17 @@ static void debug_cells(size_t total) {
 }
 
 static void print_help() {
+	fprintf(stderr,"usage: csvgrep [OPTIONS] [FILE]");
 	fprintf(stderr, "-s ,\n");
-	fprintf(stderr, "  Which character to use as separator (default is ,)\n");
+	fprintf(stderr, "\tWhich character to use as separator (default is ,)\n");
 	fprintf(stderr, "-p column/pattern/\n");
-	fprintf(stderr, "  Multiple -p are allowed, they work as an AND \n");
-	fprintf(stderr, "-c \n");
-	fprintf(stderr, "  Only count the rows that match\n");
-	fprintf(stderr, "-o \n");
-	fprintf(stderr, " Make the match into an OR, changes the behavior of -p and -v\n");
-	fprintf(stderr, "-v \n");
-	fprintf(stderr, " Print only the rows that did not match all patterns\n");
+	fprintf(stderr, "\tMultiple -p are allowed, they work as an AND \n");
+	fprintf(stderr, "-c\n");
+	fprintf(stderr, "\tOnly count the rows that match\n");
+	fprintf(stderr, "-o\n");
+	fprintf(stderr, "\tMake the match into an OR, changes the behavior of -p and -v\n");
+	fprintf(stderr, "-v\n");
+	fprintf(stderr, "\tPrint only the rows that did not match all patterns\n");
 }
 
 static struct {
@@ -140,7 +140,6 @@ static struct {
 
 static void parse_config(int argc, char** argv) {
 	config.source = stdin;
-	config.target = stdout;
 	config.separator = ',';
 	config.count_only = false;
 	config.negative = false;
@@ -185,6 +184,13 @@ static void parse_config(int argc, char** argv) {
 				break;
 		}
 	}
+	if (optind < argc) {
+		config.source = fopen(argv[optind], "r");
+		if (!config.source) {
+			fprintf(stderr, "Could not open file %s for reading\n", argv[optind]);
+			exit(1);
+		}
+	}
 
 	if (half_config.n_patterns == 0) {
 		fprintf(stderr, "You should at least provide one pattern\n");
@@ -205,9 +211,9 @@ static size_t finish_config(size_t cells_found) {
 		if (!config.count_only) {
 			// also immediatly print the header
 			if (current_cell != _cells) {
-				fwrite(&(config.separator),sizeof(char),1, config.target);
+				fwrite(&(config.separator),sizeof(char),1, stdout);
 			}
-			fwrite(current_cell->start, sizeof(char), current_cell->length, config.target);
+			fwrite(current_cell->start, sizeof(char), current_cell->length, stdout);
 		}
 		current_cell++;
 	}
@@ -221,7 +227,7 @@ static size_t finish_config(size_t cells_found) {
 		config.newline_length = 2;
 	}
 	if (!config.count_only) {
-		fwrite(config.newline, sizeof(char), config.newline_length, config.target);
+		fwrite(config.newline, sizeof(char), config.newline_length, stdout);
 	}
 
 	config.patterns = calloc(sizeof(Regex),config.column_count);
@@ -303,12 +309,12 @@ static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 					}
 					else {
 						if (first_line && _half_line) {
-							fwrite(_prev_line, sizeof(char), _prev_line_length, config.target);
+							fwrite(_prev_line, sizeof(char), _prev_line_length, stdout);
 							first_line = false;
 							_prev_line_length = 0;
 						}
-						fwrite(current_line_start, sizeof(char), current_line_length, config.target);
-						fwrite(config.newline, sizeof(char), config.newline_length, config.target);
+						fwrite(current_line_start, sizeof(char), current_line_length, stdout);
+						fwrite(config.newline, sizeof(char), config.newline_length, stdout);
 					}
 				}
 				if (first_line) {
