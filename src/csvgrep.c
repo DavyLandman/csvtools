@@ -122,6 +122,7 @@ static void debug_cells(size_t total) {
 
 static void print_help() {
 	fprintf(stderr,"usage: csvgrep [OPTIONS] [FILE]");
+	fprintf(stderr,"options:");
 	fprintf(stderr, "-s ,\n");
 	fprintf(stderr, "\tWhich character to use as separator (default is ,)\n");
 	fprintf(stderr, "-p column/pattern/\n");

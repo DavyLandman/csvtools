@@ -140,7 +140,7 @@ static void parse_config(int argc, char** argv) {
 	preconfig.drop_column_indexes = NULL;
 
 	char c;
-	while ((c = getopt (argc, argv, "s:k:d:K:D:i:o:h")) != -1) {
+	while ((c = getopt (argc, argv, "s:k:d:K:D:h")) != -1) {
 		switch (c) {
 			case 's': 
 				config.separator = optarg[0];
