@@ -6,7 +6,6 @@
 #include <stdbool.h>
 #include <assert.h>
 #include <string.h>
-#include "string_utils.h"
 #include "csv_tokenizer.h"
 #include "debug.h"
 
@@ -15,26 +14,28 @@
 //#define BUFFER_SIZE 72
 #define CELL_BUFFER_SIZE (BUFFER_SIZE / 2) + 2
 
-#define FREEARRAY(l,c) { for(size_t ___i = 0; ___i< c; ___i++) { free(l[___i]); } }
-
 
 struct csv_tokenizer* _tokenizer;
 
 static char _buffer[BUFFER_SIZE];
 static Cell _cells[CELL_BUFFER_SIZE];
 
-// config info
-static int _column_count = 0;
-static int _current_cell_id = 0;
-static char _separator = ',';
-static char _newline[2];
-static size_t _newline_length = 0;
-static bool* _keep = NULL;
-static int _first_cell = 0;
-static bool _half_printed = false;
+static struct {
+	FILE* source;
+	FILE* target;
+
+	char separator;
+	char newline[2];
+	size_t newline_length;
+
+	bool* keep;
+	int column_count;
+	int first_cell;
+} config;
 
 
-static size_t parse_config(int argc, char** argv, size_t chars_read);
+static void parse_config(int argc, char** argv);
+static void finish_config(size_t cells_found);
 
 static void output_cells(size_t cells_found, bool last_full);
 static void debug_cells(size_t total);
@@ -43,20 +44,20 @@ int main(int argc, char** argv) {
 	size_t chars_read;
 	bool first = true;
 
-	while ((chars_read = fread(_buffer, 1, BUFFER_SIZE, stdin)) > 0) {
+	parse_config(argc, argv);
+
+	while ((chars_read = fread(_buffer, 1, BUFFER_SIZE, config.source)) > 0) {
 		LOG_D("New data read: %zu\n", chars_read);
 		size_t buffer_consumed = 0;
 		size_t cells_found = 0;
 		bool last_full = true;
 
-		if (first) {
-			first = false;
-			buffer_consumed = parse_config(argc, argv, chars_read);
-			LOG_D("Finished init : %zu\n", buffer_consumed);
-		}
-
 		while (buffer_consumed < chars_read) {
 			tokenize_cells(_tokenizer, buffer_consumed, chars_read, &buffer_consumed, &cells_found, &last_full);
+			if (first == true) {
+				first = false;
+				finish_config(cells_found);
+			}
 
 			LOG_D("Processed: %zu, Cells: %zu\n", buffer_consumed, cells_found);
 			debug_cells(cells_found);
@@ -66,8 +67,14 @@ int main(int argc, char** argv) {
 	if (_tokenizer != NULL) {
 		free_tokenizer(_tokenizer);
 	}
-	if (_keep != NULL) {
-		free(_keep);
+	if (config.keep != NULL) {
+		free(config.keep);
+	}
+	if (config.source != stdin) {
+		fclose(config.source);
+	}
+	if (stdout != stdout) {
+		fclose(stdout);
 	}
 	return 0;
 }
@@ -99,6 +106,8 @@ static void debug_cells(size_t total) {
 }
 
 static void print_help() {
+	fprintf(stderr,"usage: csvcut [OPTIONS] [FILE]");
+	fprintf(stderr,"options:");
 	fprintf(stderr, "-s ,\n");
 	fprintf(stderr, "\tWhich character to use as separator (default is ,)\n");
 	fprintf(stderr, "-k column,names,to,keep\n");
@@ -109,52 +118,64 @@ static void print_help() {
 	fprintf(stderr, "\tWhich columns to drop\n");
 }
 
-static size_t parse_config(int argc, char** argv, size_t chars_read) {
-	_separator = ',';
-	size_t chops_size;
-	char** keeps = NULL;
-	char** drops = NULL;
-	int* index_keeps = NULL;
-	int* index_drops = NULL;
+enum column_kind {
+	NONE,
+	KEEP_NAMES,
+	KEEP_INDEXES,
+	DROP_NAMES,
+	DROP_INDEXES
+};
+
+static struct {
+	enum column_kind kind;
+	size_t cuts_defined;
+	const char** cuts;
+} preconfig;
+
+static void parse_config(int argc, char** argv) {
+	config.separator = ',';
+	config.source = stdin;
+
+	
+	preconfig.kind = NONE;
+	preconfig.cuts_defined = 0;
+	preconfig.cuts = NULL;
+
 	char c;
 	while ((c = getopt (argc, argv, "s:k:d:K:D:h")) != -1) {
 		switch (c) {
 			case 's': 
-				_separator = optarg[0];
+				config.separator = optarg[0];
 				break;
 			case 'k':
-				if (drops || index_keeps || index_drops) {
-					fprintf(stderr, "Error, you can only pass one kind of chop option.\n");
-					exit(1);
-				}
-				keeps = strsplit(optarg, ",", &chops_size);
-				break;
 			case 'd':
-				if (keeps || index_keeps || index_drops) {
-					fprintf(stderr, "Error, you can only pass one kind of chop option.\n");
-					exit(1);
-				}
-				drops = strsplit(optarg, ",", &chops_size);
-				break;
 			case 'K':
-				if (keeps || drops || index_drops) {
-					fprintf(stderr, "Error, you can only pass one kind of chop option.\n");
-					exit(1);
-				}
 			case 'D':
-				if (keeps || drops || index_keeps) {
-					fprintf(stderr, "Error, you can only pass one kind of chop option.\n");
+				if (preconfig.kind != NONE) {
+					fprintf(stderr, "Error, you can only pass one kind of cut option.\n");
 					exit(1);
 				}
-				char** splitted = strsplit(optarg, ",", &chops_size);
-				if (c == 'K') {
-					index_keeps = to_int(splitted, chops_size);
+				preconfig.cuts = malloc(sizeof(char*));
+				preconfig.cuts_defined = 1;
+				preconfig.cuts[0] = strtok(optarg, ",");
+				char* next_column;
+				while ((next_column = strtok(NULL, ",")) != NULL) {
+					preconfig.cuts_defined++;
+					preconfig.cuts = realloc(preconfig.cuts, sizeof(char*) * preconfig.cuts_defined);
+					preconfig.cuts[preconfig.cuts_defined - 1] = next_column;
 				}
-				else {
-					index_drops = to_int(splitted, chops_size);
+				if (c == 'k') {
+					preconfig.kind = KEEP_NAMES;
 				}
-				FREEARRAY(splitted, chops_size);
-				free(splitted);
+				else if (c == 'd') {
+					preconfig.kind = DROP_NAMES;
+				}
+				else if (c == 'K') {
+					preconfig.kind = KEEP_INDEXES;
+				}
+				else if (c == 'D') {
+					preconfig.kind = DROP_INDEXES;
+				}
 				break;
 			case '?':
 			case 'h':
@@ -164,91 +185,88 @@ static size_t parse_config(int argc, char** argv, size_t chars_read) {
 		}
 	}
 
-	if (!(keeps || drops || index_keeps || index_drops)) {
-		fprintf(stderr, "You should describe how you want to chop the csv\n");
+	if (preconfig.kind == NONE) {
+		fprintf(stderr, "You should describe how you want to cut the csv\n");
 		print_help();
 		exit(1);
 	}
 
+	if (optind < argc) {
+		config.source = fopen(argv[optind], "r");
+		if (!config.source) {
+			fprintf(stderr, "Could not open file %s for reading\n", argv[optind]);
+			exit(1);
+		}
+	}
+
 	LOG_D("%s\n","Done parsing config params");	
 
-	_tokenizer = setup_tokenizer(_separator, _buffer, _cells,CELL_BUFFER_SIZE);
+	_tokenizer = setup_tokenizer(config.separator, _buffer, _cells,CELL_BUFFER_SIZE);
+}
 
-	size_t consumed, cells_found;
-	bool last_full;
-	tokenize_cells(_tokenizer, 0, chars_read, &consumed, &cells_found, &last_full);
+bool str_contains_n(size_t amount, const char** strings, const char* needle, size_t needle_size) {
+	for (size_t i = 0; i < amount; i++) {
+		if (strncmp(strings[i], needle, needle_size) == 0) {
+			return true;
+		}
+	}
+	return false;
+}
 
-	LOG_D("Processed: %zu, Cells: %zu\n", consumed, cells_found);
+static void finish_config(size_t cells_found) {
 	debug_cells(cells_found);
 
 	Cell const* current_cell = _cells;
 	while (current_cell < (_cells + cells_found) && current_cell->start != NULL) {
 		current_cell++;
 	}
-	_column_count = (int)(current_cell - _cells);
+	config.column_count = (int)(current_cell - _cells);
 
-	const char* new_line = _cells[_column_count-1].start + _cells[_column_count - 1].length;
-	_newline[0] = new_line[0];
-	_newline_length = 1;
+	const char* new_line = _cells[config.column_count-1].start + _cells[config.column_count - 1].length;
+	config.newline[0] = new_line[0];
+	config.newline_length = 1;
 	if (new_line[1] == '\n' || new_line[0] == '\r') {
-		_newline[1] = '\n';
-		_newline_length = 2;
+		config.newline[1] = '\n';
+		config.newline_length = 2;
 	}
 
-	_keep = calloc(sizeof(bool),_column_count);
-	for (int c = 0; c < _column_count; c++) {
-		_keep[c] =  false;
+	config.keep = calloc(sizeof(bool), config.column_count);
+	for (int c = 0; c < config.column_count; c++) {
+		config.keep[c] =  false;
 	}
 
-	if (keeps || drops) {
-		const char** chops = (const char**)(keeps ? keeps : drops);
-		for (int c = 0; c < _column_count; c++) {
-			bool cont = contains_n(chops, chops_size, _cells[c].start, _cells[c].length);
-			if ((cont && keeps) || (!cont && drops)) {
-				_keep[c] = true;
+	if (preconfig.kind == KEEP_NAMES || preconfig.kind == DROP_NAMES) {
+		for (int c = 0; c < config.column_count; c++) {
+			bool cond = str_contains_n(preconfig.cuts_defined, preconfig.cuts, _cells[c].start, _cells[c].length);
+			if ((cond && (preconfig.kind == KEEP_NAMES)) || (!cond && (preconfig.kind == DROP_NAMES))) {
+				config.keep[c] = true;
 			}
 		}
 	}
-	else if (index_keeps) {
-		for (size_t i = 0; i < chops_size; i++) {
-			_keep[index_keeps[i]] = true;
+	else if (preconfig.kind == KEEP_INDEXES || preconfig.kind == DROP_INDEXES) {
+		for (int c = 0; c < config.column_count; c++) {
+			char str_index[15];
+			int str_length = sprintf(str_index, "%d", c);
+			bool cond = str_contains_n(preconfig.cuts_defined, preconfig.cuts, str_index, str_length);
+			if ((cond && (preconfig.kind == KEEP_INDEXES)) || (!cond && (preconfig.kind == DROP_INDEXES))) {
+				config.keep[c] = true;
+			}
 		}
 	}
-	else if (index_drops) {
-		for (int c = 0; c < _column_count; c++) {
-			_keep[c] = true;
-		}
-		for (size_t i = 0; i < chops_size; i++) {
-			_keep[index_drops[i]] = false;
-		}
+	else {
+		assert(false);
 	}
-	for (int c = 0; c < _column_count; c++) {
-		if (_keep[c]) {
-			_first_cell = c;
+	free(preconfig.cuts);
+	for (int c = 0; c < config.column_count; c++) {
+		if (config.keep[c]) {
+			config.first_cell = c;
 			break;
 		}
 	}
-
-
-	if (keeps) {
-		FREEARRAY(keeps, chops_size);
-		free(keeps);
-	}
-	else if (drops) {
-		FREEARRAY(drops, chops_size);
-		free(drops);
-	}
-	else if (index_keeps) {
-		free(index_keeps);
-	}
-	else if (index_drops) {
-		free(index_drops);
-	}
-
-	output_cells(cells_found, last_full);
-	return consumed;
 }
 
+static bool _half_printed = false;
+static int _current_cell_id = 0;
 
 static void output_cells(size_t cells_found, bool last_full) {
 	LOG_D("Starting output: %zu (%d)\n", cells_found, last_full);
@@ -263,41 +281,41 @@ static void output_cells(size_t cells_found, bool last_full) {
 	while (current_cell < cell_end) {
 		//LOG_D("Current cell: %d %p\n", _current_cell_id,current_cell->start);
 		if (current_cell->start == NULL) {
-			if (_current_cell_id < _column_count) {
-				fprintf(stderr, "Not enough cells in this row, expect: %d, got: %d (cell %zu)\n", _column_count, _current_cell_id,  (size_t)(current_cell - _cells));
+			if (_current_cell_id < config.column_count) {
+				fprintf(stderr, "Not enough cells in this row, expect: %d, got: %d (cell %zu)\n", config.column_count, _current_cell_id,  (size_t)(current_cell - _cells));
 				exit(1);
 				return;
 			}
 			if (current_chunk_start != NULL) {
 				current_chunk_length--; // take away newline 
 				if (current_chunk_start != _buffer || !_half_printed) {
-					if (current_chunk_start_id != _first_cell) {
-						fwrite(&(_separator),sizeof(char),1, stdout);
+					if (current_chunk_start_id != config.first_cell) {
+						fwrite(&(config.separator),sizeof(char),1, stdout);
 					}
 				}
 				fwrite(current_chunk_start, sizeof(char), current_chunk_length, stdout);
 			}
-			fwrite(_newline, sizeof(char), _newline_length, stdout);
+			fwrite(config.newline, sizeof(char), config.newline_length, stdout);
 			current_chunk_start = (current_cell + 1)->start;
 			current_chunk_length = 0;
 			current_chunk_start_id = 0;
 			_current_cell_id = -1;
 		}
-		if (_current_cell_id >= _column_count) {
-			fprintf(stderr, "Too many cells in this row, expect: %d, got: %d (cell: %zu)\n", _column_count, _current_cell_id, (size_t)(current_cell - _cells));
+		if (_current_cell_id >= config.column_count) {
+			fprintf(stderr, "Too many cells in this row, expect: %d, got: %d (cell: %zu)\n", config.column_count, _current_cell_id, (size_t)(current_cell - _cells));
 			exit(1);
 			return;
 		}
-		else if (_keep[_current_cell_id]) {
+		else if (config.keep[_current_cell_id]) {
 			current_chunk_length += 1 + current_cell->length;
 		}
 		else {
 			// a column to drop, so lets write the previous chunk
-			if (_current_cell_id >= _first_cell && current_chunk_length > 0) {
+			if (_current_cell_id >= config.first_cell && current_chunk_length > 0) {
 				current_chunk_length--; // take away last seperator
 				if (current_chunk_start != _buffer || !_half_printed) {
-					if (current_chunk_start_id != _first_cell) {
-						fwrite(&(_separator),sizeof(char),1, stdout);
+					if (current_chunk_start_id != config.first_cell) {
+						fwrite(&(config.separator),sizeof(char),1, stdout);
 					}
 				}
 				fwrite(current_chunk_start, sizeof(char), current_chunk_length, stdout);
@@ -314,8 +332,8 @@ static void output_cells(size_t cells_found, bool last_full) {
 	if (current_chunk_length > 0) {
 		current_chunk_length--; // fix of by one error 
 		if (current_chunk_start != _buffer || !_half_printed) {
-			if (current_chunk_start_id != _first_cell) {
-				fwrite(&(_separator),sizeof(char),1, stdout);
+			if (current_chunk_start_id != config.first_cell) {
+				fwrite(&(config.separator),sizeof(char),1, stdout);
 			}
 		}
 		fwrite(current_chunk_start, sizeof(char), current_chunk_length, stdout);
