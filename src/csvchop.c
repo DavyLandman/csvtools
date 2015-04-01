@@ -6,7 +6,6 @@
 #include <stdbool.h>
 #include <assert.h>
 #include <string.h>
-#include "string_utils.h"
 #include "csv_tokenizer.h"
 #include "debug.h"
 
@@ -14,8 +13,6 @@
 //#define BUFFER_SIZE 30
 //#define BUFFER_SIZE 72
 #define CELL_BUFFER_SIZE (BUFFER_SIZE / 2) + 2
-
-#define FREEARRAY(l,c) { for(size_t ___i = 0; ___i< c; ___i++) { free(l[___i]); } }
 
 
 struct csv_tokenizer* _tokenizer;
@@ -121,23 +118,28 @@ static void print_help() {
 	fprintf(stderr, "\tWhich columns to drop\n");
 }
 
+enum column_kind {
+	NONE,
+	KEEP_NAMES,
+	KEEP_INDEXES,
+	DROP_NAMES,
+	DROP_INDEXES
+};
+
 static struct {
+	enum column_kind kind;
 	size_t cuts_defined;
-	char** keep_column_names;
-	char** drop_column_names;
-	int* keep_column_indexes;
-	int* drop_column_indexes;
+	const char** cuts;
 } preconfig;
 
 static void parse_config(int argc, char** argv) {
 	config.separator = ',';
 	config.source = stdin;
 
+	
+	preconfig.kind = NONE;
 	preconfig.cuts_defined = 0;
-	preconfig.keep_column_names = NULL;
-	preconfig.drop_column_names = NULL;
-	preconfig.keep_column_indexes = NULL;
-	preconfig.drop_column_indexes = NULL;
+	preconfig.cuts = NULL;
 
 	char c;
 	while ((c = getopt (argc, argv, "s:k:d:K:D:h")) != -1) {
@@ -149,30 +151,30 @@ static void parse_config(int argc, char** argv) {
 			case 'd':
 			case 'K':
 			case 'D':
-				if (preconfig.keep_column_names || preconfig.drop_column_names || preconfig.keep_column_indexes || preconfig.drop_column_indexes) {
+				if (preconfig.kind != NONE) {
 					fprintf(stderr, "Error, you can only pass one kind of cut option.\n");
 					exit(1);
 				}
-				char** splitted = strsplit(optarg, ",", &(preconfig.cuts_defined));
-				switch (c) {
-				case 'k':
-					preconfig.keep_column_names = splitted;
-					break;
-				case 'd':
-					preconfig.drop_column_names = splitted;
-					break;
-				case 'D':
-				case 'K': ;
-					int* indexes = to_int(splitted, preconfig.cuts_defined);
-					FREEARRAY(splitted, preconfig.cuts_defined);
-					free(splitted);
-					if (c == 'K') {
-						preconfig.keep_column_indexes = indexes;
-					}
-					else {
-						preconfig.drop_column_indexes = indexes;
-					}
-					break;
+				preconfig.cuts = malloc(sizeof(char*));
+				preconfig.cuts_defined = 1;
+				preconfig.cuts[0] = strtok(optarg, ",");
+				char* next_column;
+				while ((next_column = strtok(NULL, ",")) != NULL) {
+					preconfig.cuts_defined++;
+					preconfig.cuts = realloc(preconfig.cuts, sizeof(char*) * preconfig.cuts_defined);
+					preconfig.cuts[preconfig.cuts_defined - 1] = next_column;
+				}
+				if (c == 'k') {
+					preconfig.kind = KEEP_NAMES;
+				}
+				else if (c == 'd') {
+					preconfig.kind = DROP_NAMES;
+				}
+				else if (c == 'K') {
+					preconfig.kind = KEEP_INDEXES;
+				}
+				else if (c == 'D') {
+					preconfig.kind = DROP_INDEXES;
 				}
 				break;
 			case '?':
@@ -183,7 +185,7 @@ static void parse_config(int argc, char** argv) {
 		}
 	}
 
-	if (!(preconfig.keep_column_names || preconfig.drop_column_names || preconfig.keep_column_indexes || preconfig.drop_column_indexes)) {
+	if (preconfig.kind == NONE) {
 		fprintf(stderr, "You should describe how you want to cut the csv\n");
 		print_help();
 		exit(1);
@@ -200,6 +202,15 @@ static void parse_config(int argc, char** argv) {
 	LOG_D("%s\n","Done parsing config params");	
 
 	_tokenizer = setup_tokenizer(config.separator, _buffer, _cells,CELL_BUFFER_SIZE);
+}
+
+bool str_contains_n(size_t amount, const char** strings, const char* needle, size_t needle_size) {
+	for (size_t i = 0; i < amount; i++) {
+		if (strncmp(strings[i], needle, needle_size) == 0) {
+			return true;
+		}
+	}
+	return false;
 }
 
 static void finish_config(size_t cells_found) {
@@ -224,45 +235,28 @@ static void finish_config(size_t cells_found) {
 		config.keep[c] =  false;
 	}
 
-	if (preconfig.keep_column_names || preconfig.drop_column_names) {
-		char** cuts = preconfig.keep_column_names ? preconfig.keep_column_names : preconfig.drop_column_names; 
+	if (preconfig.kind == KEEP_NAMES || preconfig.kind == DROP_NAMES) {
 		for (int c = 0; c < config.column_count; c++) {
-			bool cond = contains_n((const char**)cuts, preconfig.cuts_defined, _cells[c].start, _cells[c].length);
-			if ((cond && preconfig.keep_column_names) || (!cond && preconfig.drop_column_names)) {
+			bool cond = str_contains_n(preconfig.cuts_defined, preconfig.cuts, _cells[c].start, _cells[c].length);
+			if ((cond && (preconfig.kind == KEEP_NAMES)) || (!cond && (preconfig.kind == DROP_NAMES))) {
 				config.keep[c] = true;
 			}
 		}
-		FREEARRAY(cuts, preconfig.cuts_defined);
-		free(cuts);
 	}
-	else if (preconfig.keep_column_indexes) {
-		for (size_t i = 0; i < preconfig.cuts_defined; i++) {
-			if (preconfig.keep_column_indexes[i] > config.column_count) {
-				fprintf(stderr, "There are only %d columns, %d is to high", config.column_count + 1, preconfig.keep_column_indexes[i]);
-				exit(1);
-				return;
-			}
-			config.keep[preconfig.keep_column_indexes[i]] = true;
-		}
-		free(preconfig.keep_column_indexes);
-	}
-	else if (preconfig.drop_column_indexes) {
+	else if (preconfig.kind == KEEP_INDEXES || preconfig.kind == DROP_INDEXES) {
 		for (int c = 0; c < config.column_count; c++) {
-			config.keep[c] = true;
-		}
-		for (size_t i = 0; i < preconfig.cuts_defined; i++) {
-			if (preconfig.drop_column_indexes[i] > config.column_count) {
-				fprintf(stderr, "There are only %d columns, %d is to high", config.column_count + 1, preconfig.drop_column_indexes[i]);
-				exit(1);
-				return;
+			char str_index[15];
+			int str_length = sprintf(str_index, "%d", c);
+			bool cond = str_contains_n(preconfig.cuts_defined, preconfig.cuts, str_index, str_length);
+			if ((cond && (preconfig.kind == KEEP_INDEXES)) || (!cond && (preconfig.kind == DROP_INDEXES))) {
+				config.keep[c] = true;
 			}
-			config.keep[preconfig.drop_column_indexes[i]] = false;
 		}
-		free(preconfig.drop_column_indexes);
 	}
 	else {
 		assert(false);
 	}
+	free(preconfig.cuts);
 	for (int c = 0; c < config.column_count; c++) {
 		if (config.keep[c]) {
 			config.first_cell = c;
