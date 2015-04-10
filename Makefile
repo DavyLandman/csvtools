@@ -1,7 +1,7 @@
 CCFlags=-std=gnu99 -Wall -Wpedantic -Wextra `pcre-config --cflags` -g 
 LinkFlags=
 CSV_GREP_FILES = bin/obj/csvgrep.o bin/obj/csv_tokenizer.o
-CSV_CHOP_FILES = bin/obj/csvchop.o bin/obj/csv_tokenizer.o bin/obj/string_utils.o
+CSV_CHOP_FILES = bin/obj/csvchop.o bin/obj/csv_tokenizer.o
 CSV_PIPE_FILES = bin/obj/csvpipe.o
 
 .PHONY: test clean test-csvgrep test-csvchop
