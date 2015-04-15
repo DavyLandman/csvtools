@@ -7,10 +7,22 @@
 
 
 #define BUFFER_SIZE 1024*1024
+//#define BUFFER_SIZE 3
 
 
 static char _buffer[BUFFER_SIZE];
-static FILE* _input;
+
+enum PipingMode {
+	NEWLINE = (1 << 0),
+	NESTED_SEPARATOR = (1 << 1),
+	NESTED_QUOTES = (1 << 2)
+};
+struct {
+	FILE* source;
+	enum PipingMode mode;
+	char separator;
+	bool drop_header;
+} config;
 
 static void parse_config(int argc, char** argv);
 static void do_pipe(size_t chars_read);
@@ -19,13 +31,15 @@ int main(int argc, char** argv) {
 	parse_config(argc, argv);
 
 	size_t chars_read;
-	while ((chars_read = fread(_buffer, sizeof(char), BUFFER_SIZE, _input)) > 0) {
+	while ((chars_read = fread(_buffer, sizeof(char), BUFFER_SIZE, config.source)) > 0) {
 		do_pipe(chars_read);
 	}
 	return 0;
 }
 
 static void print_help() {
+	fprintf(stderr,"usage: csvpipe [OPTIONS] [FILE]");
+	fprintf(stderr,"options:");
 	fprintf(stderr, "-s character\n");
 	fprintf(stderr, "  Which character is used as separator (default is ,)\n");
 	fprintf(stderr, "-c\n");
@@ -36,35 +50,28 @@ static void print_help() {
 	fprintf(stderr, " drop header row\n");
 }
 
-enum PipingMode {
-	NEWLINE = (1 << 0),
-	NESTED_SEPARATOR = (1 << 1),
-	NESTED_QUOTES = (1 << 2)
-};
 
-static FILE* _output;
-static enum PipingMode _mode = NEWLINE;
-static char _separator = ',';
-static bool _drop_header = false;
 
 
 static void parse_config(int argc, char** argv) {
-	_input = stdin;
-	_output = stdout;
+	config.source = stdin;
+	config.mode = NEWLINE;
+	config.separator = ',';
+	config.drop_header = false;
 	char c;
 	while ((c = getopt (argc, argv, "s:cqd")) != -1) {
 		switch (c) {
 			case 's': 
-				_separator = optarg[0];
+				config.separator = optarg[0];
 				break;
 			case 'c':
-				_mode |= NESTED_SEPARATOR;
+				config.mode |= NESTED_SEPARATOR;
 				break;
 			case 'q':
-				_mode |= NESTED_QUOTES;
+				config.mode |= NESTED_QUOTES;
 				break;
 			case 'd':
-				_drop_header = true;
+				config.drop_header = true;
 				break;
 			case '?':
 			case 'h':
@@ -72,6 +79,13 @@ static void parse_config(int argc, char** argv) {
 				print_help();
 				exit(1);
 				break;
+		}
+	}
+	if (optind < argc) {
+		config.source = fopen(argv[optind], "r");
+		if (!config.source) {
+			fprintf(stderr, "Could not open file %s for reading\n", argv[optind]);
+			exit(1);
 		}
 	}
 }
@@ -114,7 +128,7 @@ static void do_pipe(size_t chars_read) {
 			}
 			if (current_char == char_end) {
 				// we are at the end, let's write everything we've seen
-				fwrite(current_start, sizeof(char), current_char - current_start, _output);
+				fwrite(current_start, sizeof(char), current_char - current_start, stdout);
 				current_start = current_char;
 				if (_state != PREV_QUOTE) {
 					_state = IN_QUOTE;
@@ -122,7 +136,7 @@ static void do_pipe(size_t chars_read) {
 				break;
 			}
 		}
-		else if (*current_char == _separator) {
+		else if (*current_char == config.separator) {
 			current_char++;
 		}
 		else if (*current_char == '\n') {
@@ -134,17 +148,18 @@ static void do_pipe(size_t chars_read) {
 			current_char++;
 			if (*current_char == '\n') {
 				// we have windows new lines, so lets skip over this byte
-				fwrite(current_start, sizeof(char), current_char - current_start, _output);
+				fwrite(current_start, sizeof(char), current_char - current_start, stdout);
 				current_char++;
 				current_start = current_char;
 			}
 		}
 		else {
 			// normal field
-			while (++current_char < char_end &&	*current_char != _separator && *current_char != '\n' && *current_char != '\r');
+IN_CELL:
+			while (++current_char < char_end &&	*current_char != config.separator && *current_char != '\n' && *current_char != '\r');
 			if (current_char == char_end) {
 				// we reached the end
-				fwrite(current_start, sizeof(char), current_char - current_start, _output);
+				fwrite(current_start, sizeof(char), current_char - current_start, stdout);
 				current_start = current_char;
 				_state = IN_CELL;
 				break;
@@ -152,7 +167,7 @@ static void do_pipe(size_t chars_read) {
 		}
 	}
 	if (current_start < char_end) {
-		fwrite(current_start, sizeof(char), current_char - current_start, _output);
+		fwrite(current_start, sizeof(char), current_char - current_start, stdout);
 	}
 }
 
