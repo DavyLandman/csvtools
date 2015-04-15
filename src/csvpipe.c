@@ -140,11 +140,11 @@ static void do_pipe(size_t chars_read) {
 			current_char++;
 		}
 		else if (*current_char == '\n') {
-			current_char = '\0';
+			*current_char = '\0';
 			current_char++;
 		}
 		else if (*current_char == '\r') {
-			current_char = '\0';
+			*current_char = '\0';
 			current_char++;
 			if (*current_char == '\n') {
 				// we have windows new lines, so lets skip over this byte
