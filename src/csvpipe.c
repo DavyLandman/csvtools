@@ -38,8 +38,8 @@ int main(int argc, char** argv) {
 }
 
 static void print_help() {
-	fprintf(stderr,"usage: csvpipe [OPTIONS] [FILE]");
-	fprintf(stderr,"options:");
+	fprintf(stderr, "usage: csvpipe [OPTIONS] [FILE]");
+	fprintf(stderr, "options:");
 	fprintf(stderr, "-s character\n");
 	fprintf(stderr, "  Which character is used as separator (default is ,)\n");
 	fprintf(stderr, "-c\n");
@@ -47,7 +47,7 @@ static void print_help() {
 	fprintf(stderr, "-q\n");
 	fprintf(stderr, "  escape nested quotes by \\2 \n");
 	fprintf(stderr, "-d\n");
-	fprintf(stderr, " drop header row\n");
+	fprintf(stderr, "  drop header row\n");
 }
 
 
@@ -148,8 +148,6 @@ IN_QUOTE:
 AFTER_QUOTE: ;
 			if (current_char == char_end) {
 				// we are at the end, let's write everything we've seen
-				fwrite(current_start, sizeof(char), current_char - current_start, stdout);
-				current_start = current_char;
 				if (_state != PREV_QUOTE) {
 					_state = IN_QUOTE;
 				}
@@ -179,15 +177,13 @@ IN_CELL:
 			while (++current_char < char_end &&	*current_char != config.separator && *current_char != '\n' && *current_char != '\r');
 			if (current_char == char_end) {
 				// we reached the end
-				fwrite(current_start, sizeof(char), current_char - current_start, stdout);
-				current_start = current_char;
 				_state = IN_CELL;
 				break;
 			}
 		}
 	}
 	if (current_start < char_end) {
-		fwrite(current_start, sizeof(char), current_char - current_start, stdout);
+		fwrite(current_start, sizeof(char), char_end - current_start, stdout);
 	}
 }
 
