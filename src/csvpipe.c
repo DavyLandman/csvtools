@@ -106,8 +106,27 @@ static void do_pipe(size_t chars_read) {
 	char const* restrict char_end = _buffer + chars_read;
 	char const* restrict current_start = _buffer;
 
+	switch(_state) {
+		case PREV_QUOTE:
+			if (*current_char == '"') {
+				// we have two quotes
+				// one in the previous block, one in the current
+				goto IN_QUOTE;
+			}
+			goto AFTER_QUOTE;
+		case IN_QUOTE:
+			current_char--; // the loop starts with a increment
+			goto IN_QUOTE;
+		case IN_CELL:
+			current_char--; // the loop starts with a increment
+			goto IN_CELL;
+		default:
+			break;
+	}
+
 	while (current_char < char_end) {
 		if (*current_char == '"') {
+IN_QUOTE:
 			while (++current_char < char_end) {
 				if (*current_char == '"') {
 					char const* peek = current_char + 1;
@@ -126,6 +145,7 @@ static void do_pipe(size_t chars_read) {
 					}
 				}
 			}
+AFTER_QUOTE: ;
 			if (current_char == char_end) {
 				// we are at the end, let's write everything we've seen
 				fwrite(current_start, sizeof(char), current_char - current_start, stdout);
