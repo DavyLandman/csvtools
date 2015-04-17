@@ -6,6 +6,8 @@
 #include "debug.h"
 
 
+#define NULL_ENCODED '\x1a'
+
 #define BUFFER_SIZE 1024*1024
 //#define BUFFER_SIZE 3
 
@@ -144,6 +146,9 @@ IN_QUOTE:
 						break;
 					}
 				}
+				else if (*current_char == '\0') {
+					*current_char = NULL_ENCODED;
+				}
 			}
 AFTER_QUOTE: ;
 			if (current_char == char_end) {
@@ -174,7 +179,14 @@ AFTER_QUOTE: ;
 		else {
 			// normal field
 IN_CELL:
-			while (++current_char < char_end &&	*current_char != config.separator && *current_char != '\n' && *current_char != '\r');
+			while (++current_char < char_end) {
+				if (*current_char == config.separator || *current_char == '\n' || *current_char == '\r') {
+					break;
+				}
+				else if (*current_char == '\0') {
+					*current_char = NULL_ENCODED;
+				}
+			}
 			if (current_char == char_end) {
 				// we reached the end
 				_state = IN_CELL;
