@@ -14,14 +14,8 @@
 
 static char _buffer[BUFFER_SIZE];
 
-enum PipingMode {
-	NEWLINE = (1 << 0),
-	NESTED_SEPARATOR = (1 << 1),
-	NESTED_QUOTES = (1 << 2)
-};
 struct {
 	FILE* source;
-	enum PipingMode mode;
 	char separator;
 	bool drop_header;
 } config;
@@ -44,10 +38,6 @@ static void print_help() {
 	fprintf(stderr, "options:");
 	fprintf(stderr, "-s character\n");
 	fprintf(stderr, "  Which character is used as separator (default is ,)\n");
-	fprintf(stderr, "-c\n");
-	fprintf(stderr, "  escape nested separators by \\1 \n");
-	fprintf(stderr, "-q\n");
-	fprintf(stderr, "  escape nested quotes by \\2 \n");
 	fprintf(stderr, "-d\n");
 	fprintf(stderr, "  drop header row\n");
 }
@@ -57,20 +47,13 @@ static void print_help() {
 
 static void parse_config(int argc, char** argv) {
 	config.source = stdin;
-	config.mode = NEWLINE;
 	config.separator = ',';
 	config.drop_header = false;
 	char c;
-	while ((c = getopt (argc, argv, "s:cqd")) != -1) {
+	while ((c = getopt (argc, argv, "s:d")) != -1) {
 		switch (c) {
 			case 's': 
 				config.separator = optarg[0];
-				break;
-			case 'c':
-				config.mode |= NESTED_SEPARATOR;
-				break;
-			case 'q':
-				config.mode |= NESTED_QUOTES;
 				break;
 			case 'd':
 				config.drop_header = true;
@@ -95,7 +78,6 @@ static void parse_config(int argc, char** argv) {
 enum tokenizer_state {
 	FRESH,
 	PREV_NEWLINE,
-	PREV_CELL,
 	PREV_QUOTE,
 	IN_QUOTE,
 	IN_CELL
@@ -122,6 +104,13 @@ static void do_pipe(size_t chars_read) {
 		case IN_CELL:
 			current_char--; // the loop starts with a increment
 			goto IN_CELL;
+		case PREV_NEWLINE:
+			if (*current_char == '\n') {
+				// we already had a newline, so lets eat this second windows
+				// newline
+				current_char++;
+			}
+			break;
 		default:
 			break;
 	}
@@ -169,7 +158,11 @@ AFTER_QUOTE: ;
 		else if (*current_char == '\r') {
 			*current_char = '\0';
 			current_char++;
-			if (*current_char == '\n') {
+			if (current_char == char_end) {
+				_state = PREV_NEWLINE;
+				break;
+			}
+			else if (*current_char == '\n') {
 				// we have windows new lines, so lets skip over this byte
 				fwrite(current_start, sizeof(char), current_char - current_start, stdout);
 				current_char++;
