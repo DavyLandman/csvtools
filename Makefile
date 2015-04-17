@@ -3,16 +3,20 @@ LinkFlags=
 CSV_GREP_FILES = bin/obj/csvgrep.o bin/obj/csv_tokenizer.o
 CSV_CHOP_FILES = bin/obj/csvchop.o bin/obj/csv_tokenizer.o
 CSV_PIPE_FILES = bin/obj/csvpipe.o
+CSV_UNPIPE_FILES = bin/obj/csvunpipe.o
 
 .PHONY: test clean test-csvgrep test-csvchop
 
-all: bin/csvchop bin/csvgrep bin/csvpipe
+all: bin/csvchop bin/csvgrep bin/csvpipe bin/csvunpipe
 
 bin/csvchop: $(CSV_CHOP_FILES) Makefile
 	$(CC) -o $@ $(LinkFlags) $(CSV_CHOP_FILES) 
 
 bin/csvpipe: $(CSV_PIPE_FILES) Makefile
 	$(CC) -o $@ $(LinkFlags) $(CSV_PIPE_FILES) 
+
+bin/csvunpipe: $(CSV_UNPIPE_FILES) Makefile
+	$(CC) -o $@ $(LinkFlags) $(CSV_UNPIPE_FILES) 
 
 bin/csvgrep: $(CSV_GREP_FILES) Makefile
 	$(CC) -o $@ $(LinkFlags) `pcre-config --libs` $(CSV_GREP_FILES) 
