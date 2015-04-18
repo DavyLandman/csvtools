@@ -34,6 +34,9 @@ test-csvgrep: bin/csvgrep
 
 test-csvchop: bin/csvchop
 	cd test && ./csvchop.sh
+	
+test-csvpipe: bin/csvpipe
+	cd test && ./runtest.sh csvpipe
 
 clean:
 	rm -f bin/csv*
