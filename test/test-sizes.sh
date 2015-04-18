@@ -5,7 +5,7 @@ cd ..
 function test_with_size() {
 	if (($1 > 30)); then
 		if (($1 > 72)) ; then # csvcut has to read the full header
-			if (($1 > 200)); then # csvgrep has to fit the max line length in 2*BUFFER_SIZE
+			if (($1 > 145)); then # csvgrep has to fit the max line length in 2*BUFFER_SIZE
 				make test-csvcut test-csvgrep BUFFER_SIZE=$1 DISABLE_ASSERTS=-g
 			else
 				make test-csvgrep BUFFER_SIZE=$1 DISABLE_ASSERTS=-g SKIP_LARGE_FILES=1
