@@ -95,6 +95,7 @@ static void do_pipe(size_t chars_read) {
 				// we already had a newline, so lets eat this second windows
 				// newline
 				current_char++;
+				current_start++;
 			}
 			break;
 		default:
