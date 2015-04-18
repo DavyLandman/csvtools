@@ -24,15 +24,19 @@ all: bin/csvcut bin/csvgrep bin/csvpipe bin/csvunpipe
 # yes, we recompile csv_tokenizer, it keeps the makefile simpler and it allows
 # the compiler to do some cross module optimizations :)
 
+csvcut: bin/csvcut
 bin/csvcut: $(CSV_CUT_FILES) Makefile
 	$(CC) -o $@ $(LinkFlags) $(CCFlags) $(CSV_CUT_FILES) 
 
+csvpipe: bin/csvpipe
 bin/csvpipe: $(CSV_PIPE_FILES) Makefile
 	$(CC) -o $@ $(LinkFlags) $(CCFlags) $(CSV_PIPE_FILES) 
 
+csvunpipe: bin/csvunpipe
 bin/csvunpipe: $(CSV_UNPIPE_FILES) Makefile
 	$(CC) -o $@ $(LinkFlags) $(CCFlags) $(CSV_UNPIPE_FILES) 
 
+csvgrep: bin/csvgrep
 bin/csvgrep: $(CSV_GREP_FILES) Makefile
 	$(CC) -o $@ $(LinkFlags) `pcre-config --libs` $(CCFlags) `pcre-config --cflags` $(CSV_GREP_FILES) 
 
