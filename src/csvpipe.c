@@ -115,6 +115,7 @@ static void do_pipe(size_t chars_read) {
 				current_char++;
 				current_start++;
 			}
+			_state = FRESH;
 			break;
 		default:
 			break;
