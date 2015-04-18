@@ -1,5 +1,6 @@
 #!/bin/sh
 PROGRAM=$1
+LARGE_FILES=$2
 RESULT=0
 
 function test_normal() {
@@ -48,7 +49,9 @@ do
 	OUTPUT=`echo $INPUT | sed 's/input/output/'`
 	case $INPUT in
 		*.csv.xz )
-			test_xz "$INPUT" "$PROGRAM" "$ARGS" "$OUTPUT"
+			if (($LARGE_FILES == 1)); then
+				test_xz "$INPUT" "$PROGRAM" "$ARGS" "$OUTPUT"
+			fi
 		;;
 		*.csv )
 			test_normal "$INPUT" "$PROGRAM" "$ARGS" "$OUTPUT"
