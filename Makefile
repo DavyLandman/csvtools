@@ -27,13 +27,13 @@ bin/obj/%.o: src/%.c bin/obj/ Makefile
 bin/obj/: 
 	mkdir -p bin/obj
 
-test: test-csvgrep test-csvcut
+test: test-csvgrep test-csvcut test-csvpipe test-csvunpipe
 
 test-csvgrep: bin/csvgrep
 	cd test && ./runtest.sh csvgrep
 
 test-csvcut: bin/csvcut
-	cd test && ./csvcut.sh
+	cd test && ./runtest.sh csvcut
 	
 test-csvpipe: bin/csvpipe
 	cd test && ./runtest.sh csvpipe
