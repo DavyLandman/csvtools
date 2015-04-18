@@ -72,12 +72,30 @@ enum tokenizer_state {
 	IN_QUOTE,
 };
 
-enum tokenizer_state _state = FRESH;
+static bool first_run = true;
+static enum tokenizer_state _state = FRESH;
 
 static void do_pipe(size_t chars_read) {
 	char* restrict current_char = _buffer;
 	char const* restrict char_end = _buffer + chars_read;
 	char const* restrict current_start = _buffer;
+
+	if (config.drop_header && first_run) {
+		while (current_char < char_end) {
+			if (*current_char == '\n' || *current_char == '\r') {
+				if (*current_char == '\r') {
+					_state = PREV_NEWLINE; // handle the windows newlines correctly
+				}
+				current_start = ++current_char;
+				first_run = false;
+				break;
+			}
+			current_char++;
+		}
+		if (current_char == char_end) {
+			return;
+		}
+	}
 
 	switch(_state) {
 		case PREV_QUOTE:
