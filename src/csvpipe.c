@@ -143,6 +143,9 @@ AFTER_QUOTE: ;
 				}
 				break;
 			}
+			else {
+				current_char++;
+			}
 		}
 		else if (*current_char == '\n') {
 			*current_char = '\0';
