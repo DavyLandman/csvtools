@@ -1,6 +1,23 @@
 #!/bin/sh
 
+
+set -e
+
 cd ..
+
+#silent function from https://serverfault.com/questions/607884
+SILENT_LOG=/tmp/silent_log_$$.txt
+trap "/bin/rm -f $SILENT_LOG" EXIT
+
+function report_and_exit {
+    cat "${SILENT_LOG}"
+    exit 1
+}
+
+function silent {
+	`rm -f ${SILENT_LOG}`
+    $* 2>>"${SILENT_LOG}" >> "${SILENT_LOG}" || report_and_exit;
+}
 
 function test_with_size() {
 	if (($1 > 30)); then
@@ -10,8 +27,8 @@ function test_with_size() {
 			else
 				make test-csvgrep BUFFER_SIZE=$1 DISABLE_ASSERTS=-g SKIP_LARGE_FILES=1
 				if (($? > 0)); then
-					echo "Failure with size $1"
-					exit 1
+    				echo "\033[91mFailure with size $1\033[39m"
+					return 1
 				fi
 				make test-csvcut BUFFER_SIZE=$1 DISABLE_ASSERTS=-g
 			fi
@@ -20,26 +37,30 @@ function test_with_size() {
 		fi
 	fi
 	if (($? > 0)); then
-		echo "Failure with size $1"
-		exit 1
+    	echo "\033[91mFailure with size $1\033[39m"
+		return 1
 	fi
 	make test-csvpipe test-csvunpipe BUFFER_SIZE=$1 DISABLE_ASSERTS=-g
 	if (($? > 0)); then
-		echo "Failure with size $1"
-		exit 1
+    	echo "\033[91mFailure with size $1\033[39m"
+		return 1
 	fi
+	return 0
 }
 
 echo "Testing predefined sizes"
 for s in 1 3 5 8 16 20 32 128 1024;
 	do
-		`make clean`
-		test_with_size $s
+		silent "make clean"
+		echo "Testing size: \t $s"
+		silent test_with_size $s
 	done
 
-echo "Trying random sizes"
+echo "Trying 40 random sizes"
 for x in {1..40};
 	do
-		`make clean`
-		test_with_size $(( ( RANDOM % 400 )  + 1 ))
+		silent "make clean"
+		s=$(( ( RANDOM % 400 )  + 1 ));
+		echo "Testing size: \t $s"
+		silent test_with_size $s
 	done
