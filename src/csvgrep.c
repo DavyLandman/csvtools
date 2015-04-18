@@ -292,7 +292,6 @@ static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 	if (_half_line) {
 		matches = _prev_matches;
 	}
-	bool first_line = true;
 	char const* restrict current_line_start = current_cell->start;
 	size_t current_line_length = 0;
 
@@ -307,21 +306,25 @@ static void output_cells(size_t cells_found, size_t offset, bool last_full) {
 				// end of the line
 				if (matches) {
 					if (config.count_only) {
+						_half_line = false;
 						_prev_line_length = 0;
 						_count++;
 					}
 					else {
-						if (first_line && _half_line) {
+						if (_half_line) {
+							LOG_V("Printed previous half line %zu\n", _prev_line_length);
 							fwrite(_prev_line, sizeof(char), _prev_line_length, stdout);
-							first_line = false;
+							_half_line = false;
 							_prev_line_length = 0;
 						}
 						fwrite(current_line_start, sizeof(char), current_line_length, stdout);
 						fwrite(config.newline, sizeof(char), config.newline_length, stdout);
 					}
 				}
-				if (first_line) {
-					first_line = false;
+				else if (_half_line) {
+					// we stored the previos part of this line, but it can be dropped
+					_half_line = false;  
+					_prev_line_length = 0;
 				}
 				current_line_start = (current_cell + 1)->start;
 				current_line_length = 0;
