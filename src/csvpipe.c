@@ -39,9 +39,6 @@ static void print_help() {
 	fprintf(stderr, "  drop header row\n");
 }
 
-
-
-
 static void parse_config(int argc, char** argv) {
 	config.source = stdin;
 	config.drop_header = false;
