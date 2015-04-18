@@ -107,7 +107,7 @@ static void debug_cells(size_t total) {
 		}
 		else {
 			char* s = calloc(sizeof(char), current_cell->length + 1);
-			s[*current_cell_length] = '\0';
+			s[current_cell->length] = '\0';
 			memcpy(s, current_cell->start, current_cell->length);
 			LOG_V("Cell %zu : %s\n", (size_t)(current_cell - _cells), s);
 			free(s);
