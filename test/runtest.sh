@@ -1,3 +1,4 @@
+#!/bin/sh
 PROGRAM=$1
 RESULT=0
 
@@ -5,21 +6,21 @@ function test_normal() {
 	REF=`cat $4`
 	OUTPUT=`cat $1 | ../bin/$2 $3`
 	if (($? > 0)); then
-		echo -e "\t- $1 params: \"$3\" =\t Failed ($2 crashed)"
+		echo "\t- $1 params: \"$3\" =\t Failed ($2 crashed)"
 		RESULT=1
 		return
 	fi
 
 
 	if [ "$OUTPUT" != "$REF" ]; then
-		echo -e "\t- $1 params: \"$3\" =\t Failed"
+		echo "\t- $1 params: \"$3\" =\t Failed"
 		echo "$OUTPUT" > /tmp/error-output.csv
 		diff -a -d "$4" /tmp/error-output.csv
 		rm /tmp/error-output.csv
 		echo ""
 		RESULT=1
 	else
-		echo -e "\t- $1 params: \"$3\" =\t OK"
+		echo  "\t- $1 params: \"$3\" =\t OK"
 	fi
 }
 
@@ -27,17 +28,17 @@ function test_xz() {
 	REF=`xzcat $4 | md5sum`
 	OUTPUT=`xzcat $1 | ../bin/$2 $3 | md5sum`
 	if (($? > 0)); then
-		echo -e "\t- $1 params: \"$3\" =\t Failed ($2 crashed)"
+		echo "\t- $1 params: \"$3\" =\t Failed ($2 crashed)"
 		RESULT=1
 		return
 	fi
 
 
 	if [ "$OUTPUT" != "$REF" ]; then
-		echo -e "\t- $1 params: \"$3\" =\t Failed"
+		echo "\t- $1 params: \"$3\" =\t Failed"
 		RESULT=1
 	else
-		echo -e "\t- $1 params: \"$3\" =\t OK"
+		echo "\t- $1 params: \"$3\" =\t OK"
 	fi
 }
 echo "Testing $PROGRAM"
