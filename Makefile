@@ -38,6 +38,9 @@ test-csvchop: bin/csvchop
 test-csvpipe: bin/csvpipe
 	cd test && ./runtest.sh csvpipe
 
+test-csvunpipe: bin/csvunpipe
+	cd test && ./runtest.sh csvunpipe
+
 clean:
 	rm -f bin/csv*
 	rm -f bin/obj/*.o
