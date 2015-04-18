@@ -80,7 +80,6 @@ enum tokenizer_state {
 	PREV_NEWLINE,
 	PREV_QUOTE,
 	IN_QUOTE,
-	IN_CELL
 };
 
 enum tokenizer_state _state = FRESH;
@@ -101,9 +100,6 @@ static void do_pipe(size_t chars_read) {
 		case IN_QUOTE:
 			current_char--; // the loop starts with a increment
 			goto IN_QUOTE;
-		case IN_CELL:
-			current_char--; // the loop starts with a increment
-			goto IN_CELL;
 		case PREV_NEWLINE:
 			if (*current_char == '\n') {
 				// we already had a newline, so lets eat this second windows
@@ -148,9 +144,6 @@ AFTER_QUOTE: ;
 				break;
 			}
 		}
-		else if (*current_char == config.separator) {
-			current_char++;
-		}
 		else if (*current_char == '\n') {
 			*current_char = '\0';
 			current_char++;
@@ -169,22 +162,13 @@ AFTER_QUOTE: ;
 				current_start = current_char;
 			}
 		}
+		else if (*current_char == '\0') {
+			*current_char = NULL_ENCODED;
+			current_char++;
+		}
 		else {
-			// normal field
-IN_CELL:
-			while (++current_char < char_end) {
-				if (*current_char == config.separator || *current_char == '\n' || *current_char == '\r') {
-					break;
-				}
-				else if (*current_char == '\0') {
-					*current_char = NULL_ENCODED;
-				}
-			}
-			if (current_char == char_end) {
-				// we reached the end
-				_state = IN_CELL;
-				break;
-			}
+			// all other chars, just skip one
+			current_char++;
 		}
 	}
 	if (current_start < char_end) {
