@@ -16,7 +16,6 @@ static char _buffer[BUFFER_SIZE];
 
 struct {
 	FILE* source;
-	char separator;
 	bool drop_header;
 } config;
 
@@ -36,8 +35,6 @@ int main(int argc, char** argv) {
 static void print_help() {
 	fprintf(stderr, "usage: csvpipe [OPTIONS] [FILE]");
 	fprintf(stderr, "options:");
-	fprintf(stderr, "-s character\n");
-	fprintf(stderr, "  Which character is used as separator (default is ,)\n");
 	fprintf(stderr, "-d\n");
 	fprintf(stderr, "  drop header row\n");
 }
@@ -47,14 +44,10 @@ static void print_help() {
 
 static void parse_config(int argc, char** argv) {
 	config.source = stdin;
-	config.separator = ',';
 	config.drop_header = false;
 	char c;
-	while ((c = getopt (argc, argv, "s:d")) != -1) {
+	while ((c = getopt (argc, argv, "d")) != -1) {
 		switch (c) {
-			case 's': 
-				config.separator = optarg[0];
-				break;
 			case 'd':
 				config.drop_header = true;
 				break;
