@@ -1,31 +1,39 @@
-CCFlags=-std=gnu99 -Wall -Wpedantic -Wextra `pcre-config --cflags` -g 
+BUFFER_SIZE=1048576 # 1024K can be overridden with make BUFFER_SIZE=20
 LinkFlags=
-CSV_GREP_FILES = bin/obj/csvgrep.o bin/obj/csv_tokenizer.o
-CSV_CUT_FILES = bin/obj/csvcut.o bin/obj/csv_tokenizer.o
-CSV_PIPE_FILES = bin/obj/csvpipe.o
-CSV_UNPIPE_FILES = bin/obj/csvunpipe.o
+CCFlags=-std=gnu99 -Wall -Wpedantic -Wextra -DBUFFER_SIZE=$(BUFFER_SIZE)
+
+ifdef DEBUG # set with `make .. DEBUG=1`
+CCFlags+=-g -DDEBUG=1
+ifdef VERBOSE
+CCFlags+=-DMOREDEBUG=1
+endif
+else
+CCFlags+=-O2
+endif
+
+CSV_GREP_FILES = src/csvgrep.c src/csv_tokenizer.c
+CSV_CUT_FILES = src/csvcut.c src/csv_tokenizer.c
+CSV_PIPE_FILES = src/csvpipe.c
+CSV_UNPIPE_FILES = src/csvunpipe.c
 
 .PHONY: test clean test-csvgrep test-csvcut
 
 all: bin/csvcut bin/csvgrep bin/csvpipe bin/csvunpipe
 
+# yes, we recompile csv_tokenizer, it keeps the makefile simpler and it allows
+# the compiler to do some cross module optimizations :)
+
 bin/csvcut: $(CSV_CUT_FILES) Makefile
-	$(CC) -o $@ $(LinkFlags) $(CSV_CUT_FILES) 
+	$(CC) -o $@ $(LinkFlags) $(CCFlags) $(CSV_CUT_FILES) 
 
 bin/csvpipe: $(CSV_PIPE_FILES) Makefile
-	$(CC) -o $@ $(LinkFlags) $(CSV_PIPE_FILES) 
+	$(CC) -o $@ $(LinkFlags) $(CCFlags) $(CSV_PIPE_FILES) 
 
 bin/csvunpipe: $(CSV_UNPIPE_FILES) Makefile
-	$(CC) -o $@ $(LinkFlags) $(CSV_UNPIPE_FILES) 
+	$(CC) -o $@ $(LinkFlags) $(CCFlags) $(CSV_UNPIPE_FILES) 
 
 bin/csvgrep: $(CSV_GREP_FILES) Makefile
-	$(CC) -o $@ $(LinkFlags) `pcre-config --libs` $(CSV_GREP_FILES) 
-
-bin/obj/%.o: src/%.c bin/obj/ Makefile
-	$(CC) -c -o $@ $(CCFlags) $< 
-
-bin/obj/: 
-	mkdir -p bin/obj
+	$(CC) -o $@ $(LinkFlags) `pcre-config --libs` $(CCFlags) `pcre-config --cflags` $(CSV_GREP_FILES) 
 
 test: test-csvgrep test-csvcut test-csvpipe test-csvunpipe
 
@@ -42,5 +50,4 @@ test-csvunpipe: bin/csvunpipe
 	cd test && ./runtest.sh csvunpipe
 
 clean:
-	rm -f bin/csv*
-	rm -f bin/obj/*.o
+	rm -f bin/*

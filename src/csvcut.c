@@ -9,7 +9,6 @@
 #include "csv_tokenizer.h"
 #include "debug.h"
 
-#define BUFFER_SIZE 1024*1024
 //#define BUFFER_SIZE 30
 //#define BUFFER_SIZE 72
 #define CELL_BUFFER_SIZE (BUFFER_SIZE / 2) + 2

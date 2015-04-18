@@ -8,10 +8,7 @@
 
 #define NULL_ENCODED '\x1a'
 
-#define BUFFER_SIZE 1024*1024
 //#define BUFFER_SIZE 3
-
-
 static char _buffer[BUFFER_SIZE];
 
 struct {
