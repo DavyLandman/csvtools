@@ -30,7 +30,7 @@ bin/obj/:
 test: test-csvgrep test-csvchop
 
 test-csvgrep: bin/csvgrep
-	cd test && ./csvgrep.sh
+	cd test && ./runtest.sh csvgrep
 
 test-csvchop: bin/csvchop
 	cd test && ./csvchop.sh
