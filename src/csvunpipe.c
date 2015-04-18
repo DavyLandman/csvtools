@@ -44,6 +44,7 @@ static void parse_config(int argc, char** argv) {
 		switch (c) {
 			case 'p':
 				fwrite(optarg, sizeof(char), strlen(optarg), stdout);
+				fwrite("\n", sizeof(char), 1, stdout);
 				break;
 			case '?':
 			case 'h':
