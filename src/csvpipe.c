@@ -154,6 +154,7 @@ AFTER_QUOTE: ;
 			}
 			else {
 				current_char++;
+				_state = FRESH;
 			}
 		}
 		else if (*current_char == '\n') {
