@@ -76,6 +76,7 @@ static void do_pipe(size_t chars_read) {
 	char* restrict current_char = _buffer;
 	char const* restrict char_end = _buffer + chars_read;
 	char const* restrict current_start = _buffer;
+	LOG_V("Piping: %zu state: %d first char: %c\n", chars_read, _state, *current_char);
 
 	if (config.drop_header && first_run) {
 		while (current_char < char_end) {
@@ -96,12 +97,14 @@ static void do_pipe(size_t chars_read) {
 
 	switch(_state) {
 		case PREV_QUOTE:
+			_state = FRESH; // reset state
 			if (*current_char == '"') {
 				// we have two quotes
 				// one in the previous block, one in the current
 				goto IN_QUOTE;
 			}
-			goto AFTER_QUOTE;
+			// we were at the end of the quoted cell, so let's continue
+			break;
 		case IN_QUOTE:
 			current_char--; // the loop starts with a increment
 			goto IN_QUOTE;
@@ -142,7 +145,6 @@ IN_QUOTE:
 					*current_char = NULL_ENCODED;
 				}
 			}
-AFTER_QUOTE: ;
 			if (current_char == char_end) {
 				// we are at the end, let's write everything we've seen
 				if (_state != PREV_QUOTE) {
