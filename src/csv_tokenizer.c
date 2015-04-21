@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 #include "debug.h"
 #include "csv_tokenizer.h"
 
@@ -29,6 +30,7 @@ struct csv_tokenizer* setup_tokenizer(char separator, const char* restrict buffe
 	tokenizer->buffer = buffer;
 	tokenizer->cells = cells;
 	tokenizer->cells_end = cells + cell_size - 2; // two room at the end
+	assert(tokenizer->cells < tokenizer->cells_end);
 
 	tokenizer->state = FRESH;
 	return tokenizer;

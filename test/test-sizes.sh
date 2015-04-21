@@ -40,7 +40,7 @@ function test_with_size() {
     	echo "\033[91mFailure with size $1\033[39m"
 		return 1
 	fi
-	make test-csvpipe test-csvunpipe test-csvpipe test-csvunpipe BUFFER_SIZE=$1 DISABLE_ASSERTS=-g
+	make test-csvpipe test-csvunpipe test-csvpipe test-csvunpipe test-csvawkpipe BUFFER_SIZE=$1 DISABLE_ASSERTS=-g
 	if (($? > 0)); then
     	echo "\033[91mFailure with size $1\033[39m"
 		return 1
