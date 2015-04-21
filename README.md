@@ -58,3 +58,8 @@ Or as valgrind reports it:
 
 In the crititical path of tokenizing the csv stream and writing it to `stdout`, there are no copies or memory allocations. The programs read into a buffer from `stdin` (or the file passed as last argument), the tokenizer stores offsets (to that buffer) and lenghts in a cell array, and the printer writes from the same buffer, using the offsets and lengths from the cell array. 
 
+## Instalation
+
+1. Clone the library
+2. `make install` (or with prefix: `make install prefix=~/.apps/`)
+3. enjoy :)

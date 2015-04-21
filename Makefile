@@ -18,7 +18,7 @@ CSV_PIPE_FILES = src/csvpipe.c
 CSV_UNPIPE_FILES = src/csvunpipe.c
 CSV_AWKPIPE_FILES = src/csvawkpipe.c
 
-.PHONY: all test clean test-csvgrep test-csvcut test-csvpipe test-csvunpipe test-all-sizes 
+.PHONY: all test clean test-csvgrep test-csvcut test-csvpipe test-csvunpipe test-all-sizes install
 
 all: bin/csvcut bin/csvgrep bin/csvpipe bin/csvunpipe bin/csvawkpipe bin/csvawk
 
