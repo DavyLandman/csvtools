@@ -1,35 +1,40 @@
 # csvtools, fast processing of CSV streams
 
-I've been using a lot of CSV files for analyzing big data sets.
+As our data gets bigger, CSV files grow in size.
 The CSV format is not exactly pipe-friendly due to embedded newlines and quoted separators.
-For a while I was using [onyxfish/csvkit](https://github.com/onyxfish/csvkit) which offers a great set of utilties for most tasks you would want to perform.
-However, it is not fast. For reasonable data sets, this doesn't matter, but for the sizes of CSVs I was working with, I needed more.
+[onyxfish/csvkit](https://github.com/onyxfish/csvkit) offers a great set of utilties for most tasks you would want to perform on CSV's in a gnu toolset kind of way.
+However, it is not fast. For reasonable data sets, this doesn't matter, but for CSVs of more than a few MBs, you start to feel the pain.
 
-This repository contains tools for parsing [RFC 4180](https://tools.ietf.org/html/rfc4180) CSVs.
+This repository contains gnu-alike tools for parsing [RFC 4180](https://tools.ietf.org/html/rfc4180) CSVs at high speed.
 
-## csvchop
+## Tools
 
-Often I have to drop one or more columns from a stream.
-`csvchop` reads data from `stdin` and outputs to `stdout` the same data without the chopped columns.
+- `csvcut` a `cut(1)` equivelant to drop columns from a csv file
+- `csvgrep` a `grep(1)` equivelant to match on one or more collumns per row, and only keep the rows matching all or any of the patterns. (it uses PRCE for regular expression goodness)
+- `csvawk` a wrapper for `awk(1)` which correctly recognizes rows and cells (even across newlines).
+- `csvpipe` and `csvunpipe` translate the newlines separating rows to `\0` such that `sort -z` and `uniq -z` and other null-terminated-line based tools can be used more correctly.
 
-### Options
-```
-> ./csvchop -h
--s ,
-        Which character to use as separator (default is ,)
--k column,names,to,keep
--d column,names,to,drop
--K 0,1,3
-        Which columns to keep
--D 0,1,3
-        Which columns to drop
-```
+## Performance
 
-### Performance
+Benchmarking on the  [Canada 2011 sensus](http://www12.statcan.gc.ca/census-recensement/2011/dp-pd/prof/details/download-telecharger/comprehensive/comp-csv-tab-dwnld-tlchrgr.cfm?Lang=E) we compare `csvtools` with other solutions. Note that these solutions might not correctly handle CSV's.
 
-The `csvcut` utility performs the same feature as `csvchop`.. Benchmarking on the  [Canada 2011 sensus](http://www12.statcan.gc.ca/census-recensement/2011/dp-pd/prof/details/download-telecharger/comprehensive/comp-csv-tab-dwnld-tlchrgr.cfm?Lang=E) data shows that `csvchop` runs at __150MB/s__ compared to `csvcut`'s 4.35MB/s.
+The performance was measured with a 850MB csv file on a SSD drive, and the maximum speed was 519MB/s.
 
-Check [`csvchop/README.md`](https://github.com/DavyLandman/csvtools/blob/master/csvchop/README.md) for the benchmark, which also compares to `cut` and `sed` solutions.
+### csvcut
+
+| scenario | csvkit | cut | sed | csvtools |
+| :--- | ---: | ---: | ---: | ---: |
+| dropping first column | 4.32 MiB/s | 195 MiB/s | 228 MiB/s | _318 MiB/s_ |
+| dropping third column | 4.12 MiB/s | 224 MiB/s | 91 MiB/s | _359 MiB/s_ |
+
+So even compared to sed or cut, which aren't handeling quoted separators correctly, our `csvcut` is much faster.
+
+### csvgrep
+
+| scenario | csvkit | grep | awk | csvtools |
+| :--- | ---: | ---: | ---: | ---: |
+| one pattern | 1.86 MiB/s | 284 MiB/s | 208 MiB/s | 310 MiB/s |
+| two patterns | 1.87 MiB/s | 224 MiB/s | 140 MiB/s | 258 MiB/s |
 
 ### Why so fast?
 No malloc & memcpy!
@@ -38,5 +43,5 @@ Or as valgrind reports it:
 ==2473==   total heap usage: 18 allocs, 18 frees, 210 bytes allocated
 ```
 
-In the crititical path of tokenizing the csv stream and writing it to `stdout`, there are no copies or memory allocations. `csvchop` reads into a buffer from `stdin`, the tokenizer stores offsets (to that buffer) and lenghts in a cell array, and the printer writes from the same buffer, using the offsets and lengths from the cell array. 
+In the crititical path of tokenizing the csv stream and writing it to `stdout`, there are no copies or memory allocations. The programs read into a buffer from `stdin` (or the file passed as last argument), the tokenizer stores offsets (to that buffer) and lenghts in a cell array, and the printer writes from the same buffer, using the offsets and lengths from the cell array. 
 

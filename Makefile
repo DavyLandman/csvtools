@@ -20,7 +20,7 @@ CSV_AWKPIPE_FILES = src/csvawkpipe.c
 
 .PHONY: all test clean test-csvgrep test-csvcut test-csvpipe test-csvunpipe test-all-sizes 
 
-all: bin/csvcut bin/csvgrep bin/csvpipe bin/csvunpipe bin/csvawkpip bin/csvawk
+all: bin/csvcut bin/csvgrep bin/csvpipe bin/csvunpipe bin/csvawkpipe bin/csvawk
 
 # yes, we recompile csv_tokenizer, it keeps the makefile simpler and it allows
 # the compiler to do some cross module optimizations :)
