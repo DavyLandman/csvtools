@@ -39,7 +39,7 @@ while getopts ":ds:" opt; do
 done
 shift $((OPTIND-1))
 
-if [ "$#" -lt 1 ]; then
+if [ $# -lt 1 ]; then
 	echo "Forgot to pass the script to run" 1>&2 ;
 	usage
 	exit 1
