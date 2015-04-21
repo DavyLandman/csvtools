@@ -60,6 +60,7 @@ In the crititical path of tokenizing the csv stream and writing it to `stdout`, 
 
 ## Instalation
 
-1. Clone the library
+1. Clone this repository
+2. Navigate to it
 2. `make install` (or with prefix: `make install prefix=~/.apps/`)
 3. enjoy :)
