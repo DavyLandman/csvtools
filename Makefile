@@ -18,9 +18,9 @@ CSV_PIPE_FILES = src/csvpipe.c
 CSV_UNPIPE_FILES = src/csvunpipe.c
 CSV_AWKPIPE_FILES = src/csvawkpipe.c
 
-.PHONY: all test clean test-csvgrep test-csvcut test-csvpipe test-csvunpipe test-all-sizes
+.PHONY: all test clean test-csvgrep test-csvcut test-csvpipe test-csvunpipe test-all-sizes 
 
-all: bin/csvcut bin/csvgrep bin/csvpipe bin/csvunpipe bin/csvawkpipe
+all: bin/csvcut bin/csvgrep bin/csvpipe bin/csvunpipe bin/csvawkpip bin/csvawk
 
 # yes, we recompile csv_tokenizer, it keeps the makefile simpler and it allows
 # the compiler to do some cross module optimizations :)
@@ -44,6 +44,10 @@ bin/csvawkpipe: $(CSV_AWKPIPE_FILES) Makefile
 csvgrep: bin/csvgrep
 bin/csvgrep: $(CSV_GREP_FILES) Makefile
 	$(CC) -o $@ $(LinkFlags) `pcre-config --libs` $(CCFlags) `pcre-config --cflags` $(CSV_GREP_FILES) 
+
+csvawk: bin/csvawk
+bin/csvawk: src/csvawk.sh
+	cp src/csvawk.sh bin/csvawk
 
 ifdef SKIP_LARGE_FILES
 LARGE_FILES=0
