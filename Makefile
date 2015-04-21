@@ -16,7 +16,7 @@ CSV_GREP_FILES = src/csvgrep.c src/csv_tokenizer.c
 CSV_CUT_FILES = src/csvcut.c src/csv_tokenizer.c
 CSV_PIPE_FILES = src/csvpipe.c
 CSV_UNPIPE_FILES = src/csvunpipe.c
-CSV_AWKPIPE_FILES = src/csvawkpipe.c src/csv_tokenizer.c
+CSV_AWKPIPE_FILES = src/csvawkpipe.c
 
 .PHONY: all test clean test-csvgrep test-csvcut test-csvpipe test-csvunpipe test-all-sizes
 

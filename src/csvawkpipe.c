@@ -6,47 +6,28 @@
 #include <stdbool.h>
 #include <assert.h>
 #include <string.h>
-#include "csv_tokenizer.h"
 #include "debug.h"
 
 #define AWK_ROW_SEPARATOR '\x1E'
 #define AWK_CELL_SEPARATOR '\x1F'
-#define CELL_BUFFER_SIZE (BUFFER_SIZE / 2) + 2
 
-struct csv_tokenizer* _tokenizer;
 
 static char _buffer[BUFFER_SIZE];
-static Cell _cells[CELL_BUFFER_SIZE];
 
 static struct {
 	FILE* source;
+	char separator;
+	bool drop_header;
 } config;
 
 static void parse_config(int argc, char** argv);
-
-static void output_cells(size_t cells_found, bool last_full);
-static void debug_cells(size_t total);
-
+static void do_pipe(size_t chars_read);
 int main(int argc, char** argv) {
-	size_t chars_read;
-
 	parse_config(argc, argv);
 
-	while ((chars_read = fread(_buffer, 1, BUFFER_SIZE, config.source)) > 0) {
-		LOG_D("New data read: %zu\n", chars_read);
-		size_t buffer_consumed = 0;
-		size_t cells_found = 0;
-		bool last_full = true;
-
-		while (buffer_consumed < chars_read) {
-			tokenize_cells(_tokenizer, buffer_consumed, chars_read, &buffer_consumed, &cells_found, &last_full);
-			LOG_D("Processed: %zu, Cells: %zu\n", buffer_consumed, cells_found);
-			debug_cells(cells_found);
-			output_cells(cells_found, last_full);
-		}
-	}
-	if (_tokenizer != NULL) {
-		free_tokenizer(_tokenizer);
+	size_t chars_read;
+	while ((chars_read = fread(_buffer, sizeof(char), BUFFER_SIZE, config.source)) > 0) {
+		do_pipe(chars_read);
 	}
 	if (config.source != stdin) {
 		fclose(config.source);
@@ -54,47 +35,28 @@ int main(int argc, char** argv) {
 	return 0;
 }
 
-static void debug_cells(size_t total) {
-#ifdef MOREDEBUG
-	Cell* current_cell = _cells;
-	Cell* cell_end = _cells + total;
-
-	while (current_cell < cell_end) {
-		if (current_cell->start == NULL) {
-			LOG_V("Cell %zu : Newline\n", (size_t)(current_cell - _cells));
-		}
-		else if (current_cell->length == 0) {
-			LOG_V("Cell %zu : \n", (size_t)(current_cell - _cells));
-		}
-		else {
-			char* s = calloc(sizeof(char), current_cell->length + 1);
-			s[current_cell->length] = '\0';
-			memcpy(s, current_cell->start, current_cell->length);
-			LOG_V("Cell %zu : %s\n", (size_t)(current_cell - _cells), s);
-			free(s);
-		}
-		current_cell++;
-	}
-#else
-	(void)total;
-#endif
-}
-
 static void print_help() {
 	fprintf(stderr,"usage: csvawkpipe [OPTIONS] [FILE]");
 	fprintf(stderr,"options:");
 	fprintf(stderr, "-s ,\n");
 	fprintf(stderr, "  Which character to use as separator (default is ,)\n");
+	fprintf(stderr, "-d\n");
+	fprintf(stderr, "  drop header row\n");
 }
 
 static void parse_config(int argc, char** argv) {
-	char separator = ',';
 	config.source = stdin;
+	config.separator = ',';
+	config.drop_header = false;
+
 	char c;
-	while ((c = getopt (argc, argv, "s:")) != -1) {
+	while ((c = getopt (argc, argv, "s:d")) != -1) {
 		switch (c) {
 			case 's': 
-				separator = optarg[0];
+				config.separator = optarg[0];
+				break;
+			case 'd':
+				config.drop_header = true;
 				break;
 			case '?':
 			case 'h':
@@ -113,61 +75,129 @@ static void parse_config(int argc, char** argv) {
 	}
 
 	LOG_D("%s\n","Done parsing config params");	
-
-	_tokenizer = setup_tokenizer(separator, _buffer, _cells,CELL_BUFFER_SIZE);
 }
 
-static bool _half_printed = false;
-static bool _prev_newline = true;
+enum tokenizer_state {
+	FRESH,
+	PREV_NEWLINE,
+	PREV_QUOTE,
+	IN_QUOTE,
+};
 
-static void output_cells(size_t cells_found, bool last_full) {
-	LOG_D("Starting output: %zu (%d)\n", cells_found, last_full);
+static bool first_run = true;
+static enum tokenizer_state _state = FRESH;
 
-	Cell const * restrict current_cell = _cells;
-	Cell const * restrict cell_end = _cells + cells_found;
-
+static void do_pipe(size_t chars_read) {
+	char* restrict current_char = _buffer;
+	char const* restrict char_end = _buffer + chars_read;
 	char const* restrict current_start = _buffer;
-	size_t current_length = 0;
+	LOG_V("Piping: %zu state: %d first char: %c\n", chars_read, _state, *current_char);
 
-	if (current_cell->start == NULL) {
-		_half_printed = false;
+	if (config.drop_header && first_run) {
+		while (current_char < char_end) {
+			if (*current_char == '\n' || *current_char == '\r') {
+				if (*current_char == '\r') {
+					_state = PREV_NEWLINE; // handle the windows newlines correctly
+				}
+				current_start = ++current_char;
+				first_run = false;
+				break;
+			}
+			current_char++;
+		}
+		if (current_char == char_end) {
+			return;
+		}
 	}
 
-	while (current_cell < cell_end) {
-		if (current_cell->start == NULL) {
-			Cell const * restrict previous_cell = (current_cell - 1);
-			char *newline = _buffer;
-			if (previous_cell >= _cells) {
-				// we are not at the beginning of the buffer
-				newline = (char*)(previous_cell->start + previous_cell->length);
+	switch(_state) {
+		case PREV_QUOTE:
+			_state = FRESH; // reset state
+			if (*current_char == '"') {
+				// we have two quotes
+				// one in the previous block, one in the current
+				goto IN_QUOTE;
 			}
-			bool windows_newline = newline[0] == '\r' && newline[1] == '\n';
-			*newline = AWK_ROW_SEPARATOR;
-			current_length++;
+			// we were at the end of the quoted cell, so let's continue
+			break;
+		case IN_QUOTE:
+			current_char--; // the loop starts with a increment
+			goto IN_QUOTE;
+		case PREV_NEWLINE:
+			if (*current_char == '\n') {
+				// we already had a newline, so lets eat this second windows
+				// newline
+				current_char++;
+				current_start++;
+			}
+			_state = FRESH;
+			break;
+		default:
+			break;
+	}
 
-			if (windows_newline) {
-				LOG_V("Writing output (windows newline): %p (%p) %zu\n", current_start, _buffer, current_length);
-				fwrite(current_start, sizeof(char), current_length, stdout);
-				current_start = newline + 2;
-				current_length = 0;
+	while (current_char < char_end) {
+		if (*current_char == '"') {
+IN_QUOTE:
+			while (++current_char < char_end) {
+				if (*current_char == '"') {
+					char const* peek = current_char + 1;
+					if (peek == char_end) {
+						current_char++;
+						_state = PREV_QUOTE;
+						// at the end of stream and not sure if escaped or not
+						break;
+					}
+					else if (*peek == '"') {
+						current_char++;
+						continue;
+					}
+					else {
+						break;
+					}
+				}
 			}
-			_prev_newline = true;
+			if (current_char == char_end) {
+				// we are at the end, let's write everything we've seen
+				if (_state != PREV_QUOTE) {
+					_state = IN_QUOTE;
+				}
+				break;
+			}
+			else {
+				current_char++;
+				_state = FRESH;
+			}
+		}
+		else if (*current_char == '\n') {
+			*current_char = AWK_ROW_SEPARATOR;
+			current_char++;
+		}
+		else if (*current_char == '\r') {
+			*current_char = AWK_ROW_SEPARATOR;
+			current_char++;
+			if (current_char == char_end) {
+				_state = PREV_NEWLINE;
+				break;
+			}
+			else if (*current_char == '\n') {
+				// we have windows new lines, so lets skip over this byte
+				fwrite(current_start, sizeof(char), current_char - current_start, stdout);
+				current_char++;
+				current_start = current_char;
+			}
+		}
+		else if (*current_char == config.separator) {
+			*current_char = AWK_CELL_SEPARATOR;
+			current_char++;
 		}
 		else {
-			current_length += 1 + current_cell->length;
-			if (_prev_newline || _half_printed) {
-				_prev_newline = false;
-				_half_printed = false;
-				current_length--; // no separator
-			}
-			else if (current_cell->start != _buffer){
-				((char*)current_cell->start)[-1] = AWK_CELL_SEPARATOR;
-			}
+			// all other chars, just skip untill we find another
+			while (++current_char < char_end && *current_char != '"' && *current_char != '\r' && *current_char != '\n' && *current_char != config.separator);
 		}
-		current_cell++;
 	}
-	_half_printed = !last_full;
-
-	LOG_V("Writing output: %p (%p) %zu\n", current_start, _buffer, current_length);
-	fwrite(current_start, sizeof(char), current_length, stdout);
+	if (current_start < char_end) {
+		fwrite(current_start, sizeof(char), char_end - current_start, stdout);
+	}
 }
+
