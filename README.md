@@ -20,7 +20,7 @@ Benchmarking on the  [Canada 2011 sensus](http://www12.statcan.gc.ca/census-rece
 
 The performance was measured with a 850MB csv file on a SSD drive, and the maximum speed was 519MB/s.
 
-### csvcut
+### [csvcut](doc/csvcut.md)
 
 | scenario | csvkit | cut | sed | csvtools |
 | :--- | ---: | ---: | ---: | ---: |
@@ -29,7 +29,7 @@ The performance was measured with a 850MB csv file on a SSD drive, and the maxim
 
 So even compared to sed or cut, which aren't handeling quoted separators correctly, our `csvcut` is much faster.
 
-### csvgrep
+### [csvgrep](doc/csvgrep.md)
 
 | scenario | csvkit | grep | awk | csvtools |
 | :--- | ---: | ---: | ---: | ---: |
@@ -40,7 +40,7 @@ Faster than grep and awk, this is because the column selection in grep is done w
 
 There are ofcourse regular expressions possible where PCRE is slower than grep.
 
-### csvawk
+### [csvawk](doc/csvawk.md)
 
 | scenario | awk | awk-csv-parser | csvtools |
 | :--- | ---: | ---: | ---: |
