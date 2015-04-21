@@ -11,7 +11,7 @@ This repository contains gnu-alike tools for parsing [RFC 4180](https://tools.ie
 
 - `csvcut` a `cut(1)` equivelant to drop columns from a csv file
 - `csvgrep` a `grep(1)` equivelant to match on one or more collumns per row, and only keep the rows matching all or any of the patterns. (it uses PRCE for regular expression goodness)
-- `csvawk` a wrapper for `awk(1)` which correctly recognizes rows and cells (even across newlines).
+- `csvawk` a wrapper for `awk(1)` which correctly recognizes rows and cells (even across newlines). This is comparable to [geoffroy-aubry/awk-csv-parser](https://github.com/geoffroy-aubry/awk-csv-parser), except that it also supports embedded newlines.
 - `csvpipe` and `csvunpipe` translate the newlines separating rows to `\0` such that `sort -z` and `uniq -z` and other null-terminated-line based tools can be used more correctly.
 
 ## Performance
@@ -33,8 +33,20 @@ So even compared to sed or cut, which aren't handeling quoted separators correct
 
 | scenario | csvkit | grep | awk | csvtools |
 | :--- | ---: | ---: | ---: | ---: |
-| one pattern | 1.86 MiB/s | 284 MiB/s | 208 MiB/s | 310 MiB/s |
-| two patterns | 1.87 MiB/s | 224 MiB/s | 140 MiB/s | 258 MiB/s |
+| one pattern | 1.86 MiB/s | 284 MiB/s | 208 MiB/s | _310 MiB/s_ |
+| two patterns | 1.87 MiB/s | 224 MiB/s | 140 MiB/s | _258 MiB/s_ |
+
+Faster than grep and awk, this is because the column selection in grep is done with negative character classes multiple times.
+
+There are ofcourse regular expressions possible where PCRE is slower than grep.
+
+### csvawk
+
+| scenario | awk | awk-csv-parser | csvtools |
+| print second column | 317 MiB/s | 2.21 MiB/s | _307 MiB/s_ |
+| count numeric column | 219 MiB/s | 2.23 MiB/s | _217 MiB/s_ |
+
+Since we wrap `awk` the awk raw is the maximum speed, but we can see only a small overhead, for accurate results.
 
 ### Why so fast?
 No malloc & memcpy!
