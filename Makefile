@@ -75,5 +75,15 @@ test-csvawkpipe: bin/csvawkpipe
 test-all-sizes: 
 	cd test && ./test-sizes.sh
 
+prefix=/usr/local
+    
+install: all
+	install -m 0755 bin/csvcut $(prefix)/bin/csvcut
+	install -m 0755 bin/csvgrep $(prefix)/bin/csvgrep
+	install -m 0755 bin/csvawk $(prefix)/bin/csvawk
+	install -m 0755 bin/csvawkpipe $(prefix)/bin/csvawkpipe
+	install -m 0755 bin/csvpipe $(prefix)/bin/csvpipe
+	install -m 0755 bin/csvunpipe $(prefix)/bin/csvunpipe
+
 clean:
 	rm -rf bin/*
