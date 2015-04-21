@@ -46,7 +46,7 @@ bin/csvgrep: $(CSV_GREP_FILES) Makefile
 	$(CC) -o $@ $(LinkFlags) `pcre-config --libs` $(CCFlags) `pcre-config --cflags` $(CSV_GREP_FILES) 
 
 csvawk: bin/csvawk
-bin/csvawk: src/csvawk.sh
+bin/csvawk: src/csvawk.sh bin/csvawkpipe
 	cp src/csvawk.sh bin/csvawk
 
 ifdef SKIP_LARGE_FILES
