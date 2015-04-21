@@ -43,6 +43,7 @@ There are ofcourse regular expressions possible where PCRE is slower than grep.
 ### csvawk
 
 | scenario | awk | awk-csv-parser | csvtools |
+| :--- | ---: | ---: | ---: |
 | print second column | 317 MiB/s | 2.21 MiB/s | _307 MiB/s_ |
 | count numeric column | 219 MiB/s | 2.23 MiB/s | _217 MiB/s_ |
 
