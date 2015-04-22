@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <string.h>
 #include <assert.h>
 #include "debug.h"
 #include "hints.h"
@@ -71,6 +72,16 @@ enum tokenizer_state {
 	IN_QUOTE,
 };
 
+void replace_zeroes(char* restrict current_char, char const* restrict char_end) {
+	while (current_char != NULL) {
+		current_char = memchr(current_char, '\0', char_end - current_char);
+		if (current_char != NULL) {
+			*current_char = NULL_ENCODED;
+		}
+	}
+}
+
+
 static bool first_run = true;
 static enum tokenizer_state _state = FRESH;
 
@@ -96,6 +107,8 @@ static void do_pipe(size_t chars_read) {
 			return;
 		}
 	}
+	// doing this separatly greatly improves the speed of the loop below
+	replace_zeroes(current_char, char_end);
 
 	switch(_state) {
 		case PREV_QUOTE:
@@ -143,9 +156,6 @@ IN_QUOTE:
 						break;
 					}
 				}
-				else if (*current_char == '\0') {
-					*current_char = NULL_ENCODED;
-				}
 			}
 			if (current_char == char_end) {
 				// we are at the end, let's write everything we've seen
@@ -176,10 +186,6 @@ IN_QUOTE:
 				current_char++;
 				current_start = current_char;
 			}
-		}
-		else if (*current_char == '\0') {
-			*current_char = NULL_ENCODED;
-			current_char++;
 		}
 		else {
 			// all other chars, just skip one
