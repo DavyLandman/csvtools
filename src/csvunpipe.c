@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <string.h>
 #include <assert.h>
 #include <string.h>
 #include "debug.h"
@@ -67,14 +68,18 @@ static void do_unpipe(size_t chars_read) {
 	char* restrict current_char = _buffer;
 	char const* restrict char_end = _buffer + chars_read;
 
-	while (current_char < char_end) {
-		if (*current_char == '\0') {
+	while (current_char != NULL) {
+		current_char = memchr(current_char, '\0', char_end - current_char);
+		if (current_char != NULL) {
 			*current_char = '\n';
 		}
-		else if (*current_char == NULL_ENCODED) {
+	}
+	current_char = _buffer;
+	while (current_char != NULL) {
+		current_char = memchr(current_char, NULL_ENCODED, char_end - current_char);
+		if (current_char != NULL) {
 			*current_char = '\0';
 		}
-		current_char++;
 	}
 	fwrite(_buffer, sizeof(char), chars_read, stdout);
 }
