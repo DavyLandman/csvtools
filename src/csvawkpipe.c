@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <string.h>
 #include "debug.h"
+#include "hints.h"
 
 #define AWK_ROW_SEPARATOR '\x1E'
 #define AWK_CELL_SEPARATOR '\x1F'
@@ -26,6 +27,7 @@ int main(int argc, char** argv) {
 	parse_config(argc, argv);
 
 	size_t chars_read;
+	SEQUENTIAL_HINT(config.source);
 	while ((chars_read = fread(_buffer, sizeof(char), BUFFER_SIZE, config.source)) > 0) {
 		do_pipe(chars_read);
 	}

@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <string.h>
 #include "debug.h"
+#include "hints.h"
 
 
 #define NULL_ENCODED '\x1a'
@@ -22,6 +23,7 @@ int main(int argc, char** argv) {
 	parse_config(argc, argv);
 
 	size_t chars_read;
+	SEQUENTIAL_HINT(_source);
 	while ((chars_read = fread(_buffer, sizeof(char), BUFFER_SIZE, _source)) > 0) {
 		do_unpipe(chars_read);
 	}

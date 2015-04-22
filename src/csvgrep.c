@@ -6,6 +6,7 @@
 #include <pcre.h> 
 #include "csv_tokenizer.h"
 #include "debug.h"
+#include "hints.h"
 
 //#define BUFFER_SIZE 30
 #define CELL_BUFFER_SIZE (BUFFER_SIZE / 2) + 2
@@ -54,6 +55,7 @@ int main(int argc, char** argv) {
 
 	size_t chars_read;
 	bool first = true;
+	SEQUENTIAL_HINT(config.source);
 	while ((chars_read = fread(_buffer, 1, BUFFER_SIZE, config.source)) > 0) {
 		LOG_D("New data read: %zu\n", chars_read);
 		size_t buffer_consumed = 0;
