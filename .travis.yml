@@ -1,7 +1,5 @@
 language: c
-compiler:
-  - gcc
-  - clang
+compiler: clang
 script: make test
 before_install:
   - sudo apt-get update -qq
