@@ -1,15 +1,15 @@
 BUFFER_SIZE=1048576 # 1024K can be overridden with make BUFFER_SIZE=20
 LinkFlags=
-CCFlags=-std=gnu99 -Wall -Wpedantic -Wextra -DBUFFER_SIZE=$(BUFFER_SIZE)
+CFLAGS+=-std=gnu99 -Wall -pedantic -Wextra -DBUFFER_SIZE=$(BUFFER_SIZE)
 
 DISABLE_ASSERTS=-DNDEBUG=1
 ifdef DEBUG # set with `make .. DEBUG=1`
-CCFlags+=-g -DDEBUG=1
+CFLAGS+=-g -DDEBUG=1
 ifdef VERBOSE
-CCFlags+=-DMOREDEBUG=1
+CFLAGS+=-DMOREDEBUG=1
 endif
 else
-CCFlags+=-O2 $(DISABLE_ASSERTS)
+CFLAGS+=-O2 $(DISABLE_ASSERTS)
 endif
 
 CSV_GREP_FILES = src/csvgrep.c src/csv_tokenizer.c
@@ -27,23 +27,23 @@ all: bin/csvcut bin/csvgrep bin/csvpipe bin/csvunpipe bin/csvawkpipe bin/csvawk
 
 csvcut: bin/csvcut
 bin/csvcut: $(CSV_CUT_FILES) Makefile
-	$(CC) -o $@ $(LinkFlags) $(CCFlags) $(CSV_CUT_FILES) 
+	$(CC) -o $@ $(LinkFlags) $(CFLAGS) $(CSV_CUT_FILES) 
 
 csvpipe: bin/csvpipe
 bin/csvpipe: $(CSV_PIPE_FILES) Makefile
-	$(CC) -o $@ $(LinkFlags) $(CCFlags) $(CSV_PIPE_FILES) 
+	$(CC) -o $@ $(LinkFlags) $(CFLAGS) $(CSV_PIPE_FILES) 
 
 csvunpipe: bin/csvunpipe
 bin/csvunpipe: $(CSV_UNPIPE_FILES) Makefile
-	$(CC) -o $@ $(LinkFlags) $(CCFlags) $(CSV_UNPIPE_FILES) 
+	$(CC) -o $@ $(LinkFlags) $(CFLAGS) $(CSV_UNPIPE_FILES) 
 
 csvawkpipe: bin/csvawkpipe
 bin/csvawkpipe: $(CSV_AWKPIPE_FILES) Makefile
-	$(CC) -o $@ $(LinkFlags) $(CCFlags) $(CSV_AWKPIPE_FILES) 
+	$(CC) -o $@ $(LinkFlags) $(CFLAGS) $(CSV_AWKPIPE_FILES) 
 
 csvgrep: bin/csvgrep
 bin/csvgrep: $(CSV_GREP_FILES) Makefile
-	$(CC) -o $@ $(LinkFlags) `pcre-config --libs` $(CCFlags) `pcre-config --cflags` $(CSV_GREP_FILES) 
+	$(CC) -o $@ $(LinkFlags) `pcre-config --libs` $(CFLAGS) `pcre-config --cflags` $(CSV_GREP_FILES) 
 
 csvawk: bin/csvawk
 bin/csvawk: src/csvawk.sh bin/csvawkpipe
