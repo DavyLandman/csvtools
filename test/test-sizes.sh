@@ -9,17 +9,17 @@ cd ..
 SILENT_LOG=/tmp/silent_log_$$.txt
 trap "/bin/rm -f $SILENT_LOG" EXIT
 
-function report_and_exit {
+report_and_exit() {
     cat "${SILENT_LOG}"
     exit 1
 }
 
-function silent {
+silent() {
 	`rm -f ${SILENT_LOG}`
     $* 2>>"${SILENT_LOG}" >> "${SILENT_LOG}" || report_and_exit;
 }
 
-function test_with_size() {
+test_with_size() {
 	if (($1 > 30)); then
 		if (($1 > 72)) ; then # csvcut has to read the full header
 			if (($1 > 145)); then # csvgrep has to fit the max line length in 2*BUFFER_SIZE

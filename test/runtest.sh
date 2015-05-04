@@ -3,7 +3,7 @@ PROGRAM=$1
 LARGE_FILES=$2
 RESULT=0
 
-function test_normal() {
+test_normal() {
 	REF=`cat $4`
 	OUTPUT=`cat $1 | ../bin/$2 $3`
 	if (($? > 0)); then
@@ -25,7 +25,7 @@ function test_normal() {
 	fi
 }
 
-function test_xz() {
+test_xz() {
 	REF=`xzcat $4 | md5sum`
 	OUTPUT=`xzcat $1 | ../bin/$2 $3 | md5sum`
 	if (($? > 0)); then
