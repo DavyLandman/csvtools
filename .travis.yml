@@ -2,7 +2,7 @@ language: c
 compiler:
   - gcc
   - clang
-script: make tests
+script: make test
 before_install:
   - sudo apt-get update -qq
   - sudo apt-get install -y libpcre3-dev
