@@ -92,11 +92,7 @@ int main(int argc, char** argv) {
 	}
 	if (config.patterns != NULL) {
 		for (int c = 0; c < config.column_count; c++) {
-#ifdef PCRE_CONFIG_JIT
 			pcre_free_study((pcre_extra*)(config.patterns[c].extra));
-#else
-			pcre_free((pcre_extra*)(config.patterns[c].extra));
-#endif
 			pcre_free((pcre*)(config.patterns[c].pattern));
 		}
 	}
@@ -164,7 +160,7 @@ static void parse_config(int argc, char** argv) {
 	half_config.n_patterns = 0;
 	half_config.columns = malloc(sizeof(char*));
 	half_config.patterns = malloc(sizeof(char*));
-	half_config.column_lengths = malloc(sizeof(size_t*));
+	half_config.column_lengths = malloc(sizeof(size_t));
 
 	char c;
 	while ((c = getopt (argc, argv, "s:p:cvo")) != -1) {
@@ -186,7 +182,7 @@ static void parse_config(int argc, char** argv) {
 				if (half_config.n_patterns >= 1) {
 					half_config.columns = realloc(half_config.columns, sizeof(char*) * half_config.n_patterns);
 					half_config.patterns = realloc(half_config.patterns, sizeof(char*) * half_config.n_patterns);
-					half_config.column_lengths = realloc(half_config.column_lengths, sizeof(size_t*) * half_config.n_patterns);
+					half_config.column_lengths = realloc(half_config.column_lengths, sizeof(size_t) * half_config.n_patterns);
 				}
 				LOG_V("Got pattern: %s\n", optarg);
 				half_config.columns[half_config.n_patterns - 1] = strtok(optarg, "/");
