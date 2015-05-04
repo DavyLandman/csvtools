@@ -7,6 +7,10 @@
 #include "csv_tokenizer.h"
 #include "debug.h"
 #include "hints.h"
+#ifndef PCRE_STUDY_JIT_COMPILE
+#define PCRE_STUDY_JIT_COMPILE 0
+#endif
+
 
 //#define BUFFER_SIZE 30
 #define CELL_BUFFER_SIZE (BUFFER_SIZE / 2) + 2
@@ -47,11 +51,15 @@ static void debug_cells(size_t total);
 int main(int argc, char** argv) {
 
 	parse_config(argc, argv);
-
+#ifdef PCRE_CONFIG_JIT
 	pcre_config(PCRE_CONFIG_JIT, &_have_jit);
+#else
+	_have_jit = false;
+#endif
 	if (!_have_jit) {
 		fprintf(stderr, "I am running without PCRE-JIT support, expect less performance.\n");
 	}
+
 
 	size_t chars_read;
 	bool first = true;
@@ -84,9 +92,12 @@ int main(int argc, char** argv) {
 	}
 	if (config.patterns != NULL) {
 		for (int c = 0; c < config.column_count; c++) {
+#ifdef PCRE_CONFIG_JIT
 			pcre_free_study((pcre_extra*)(config.patterns[c].extra));
+#else
+			pcre_free((pcre_extra*)(config.patterns[c].extra));
+#endif
 			pcre_free((pcre*)(config.patterns[c].pattern));
-
 		}
 	}
 	if (config.source != stdin) {
