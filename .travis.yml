@@ -6,3 +6,19 @@ script: make test
 before_install:
   - sudo apt-get update -qq
   - sudo apt-get install -y libpcre3-dev
+
+env:
+  global:
+   # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
+   #   via the "travis encrypt" command using the project repo's public key
+   - secure: "L7U9+2GkKWXMw4i3kQ1oDa8Kr7rEXQNkZG0zMbNUPCqZdZJxeNpypi9wtoGHDOJ7h1Caxztcd/wUKUgoTqEAku4h8gNidRIF1NaRqvA3oAxHNFqetoSOie0DB5t+45/rpi16Q6vfVPeiqDyh80PpYq8iTRhznx7KqzNGbVcwivM="
+
+addons:
+  coverity_scan:
+    project:
+      name: "DavyLandman/csvtools"
+      description: "CSV tools"
+    notification_email: davy.landman@gmail.com
+    #build_command_prepend: "<Your build preprocessing command here>"
+    build_command:   "make all"
+    branch_pattern: coverity_scan
