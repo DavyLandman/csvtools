@@ -1,8 +1,6 @@
 # csvtools, fast processing of CSV streams
-<a href="https://scan.coverity.com/projects/5024">
-  <img alt="Coverity Scan Build Status"
-       src="https://img.shields.io/coverity/scan/5024.svg"/>
-</a>
+[![Build Status](https://travis-ci.org/DavyLandman/csvtools.svg?branch=master)](https://travis-ci.org/DavyLandman/csvtools)
+[![Coverity Scan Build Status](https://img.shields.io/coverity/scan/5024.svg)](https://scan.coverity.com/projects/5024)
 
 As our data gets bigger, CSV files grow in size.
 The CSV format is not exactly pipe-friendly due to embedded newlines and quoted separators.
