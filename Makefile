@@ -26,28 +26,31 @@ all: bin/csvcut bin/csvgrep bin/csvpipe bin/csvunpipe bin/csvawkpipe bin/csvawk
 # the compiler to do some cross module optimizations :)
 
 csvcut: bin/csvcut
-bin/csvcut: $(CSV_CUT_FILES) Makefile
+bin/csvcut: $(CSV_CUT_FILES) Makefile bin/
 	$(CC) -o $@ $(LinkFlags) $(CFLAGS) $(CSV_CUT_FILES) 
 
 csvpipe: bin/csvpipe
-bin/csvpipe: $(CSV_PIPE_FILES) Makefile
+bin/csvpipe: $(CSV_PIPE_FILES) Makefile bin/
 	$(CC) -o $@ $(LinkFlags) $(CFLAGS) $(CSV_PIPE_FILES) 
 
 csvunpipe: bin/csvunpipe
-bin/csvunpipe: $(CSV_UNPIPE_FILES) Makefile
+bin/csvunpipe: $(CSV_UNPIPE_FILES) Makefile bin/
 	$(CC) -o $@ $(LinkFlags) $(CFLAGS) $(CSV_UNPIPE_FILES) 
 
 csvawkpipe: bin/csvawkpipe
-bin/csvawkpipe: $(CSV_AWKPIPE_FILES) Makefile
+bin/csvawkpipe: $(CSV_AWKPIPE_FILES) Makefile bin/
 	$(CC) -o $@ $(LinkFlags) $(CFLAGS) $(CSV_AWKPIPE_FILES) 
 
 csvgrep: bin/csvgrep
-bin/csvgrep: $(CSV_GREP_FILES) Makefile
+bin/csvgrep: $(CSV_GREP_FILES) Makefile bin/
 	$(CC) -o $@ $(LinkFlags) `pcre-config --libs` $(CFLAGS) `pcre-config --cflags` $(CSV_GREP_FILES) 
 
 csvawk: bin/csvawk
-bin/csvawk: src/csvawk.sh bin/csvawkpipe
+bin/csvawk: src/csvawk.sh bin/csvawkpipe bin/
 	cp src/csvawk.sh bin/csvawk
+
+bin/:
+	mkdir bin/
 
 ifdef SKIP_LARGE_FILES
 LARGE_FILES=0
