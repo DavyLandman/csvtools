@@ -11,6 +11,11 @@
 #define PCRE_STUDY_JIT_COMPILE 0
 #endif
 
+#ifndef PCRE_CONFIG_JIT
+#define pcre_free_study pcre_free
+#endif
+
+
 
 //#define BUFFER_SIZE 30
 #define CELL_BUFFER_SIZE (BUFFER_SIZE / 2) + 2
