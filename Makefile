@@ -1,6 +1,6 @@
 BUFFER_SIZE=1048576 # 1024K can be overridden with make BUFFER_SIZE=20
 LinkFlags=
-CFLAGS+=-std=gnu99 -Wall -pedantic -Wextra -DBUFFER_SIZE=$(BUFFER_SIZE)
+CFLAGS+=-std=gnu99 -Wall -pedantic -Wextra -DBUFFER_SIZE=$(BUFFER_SIZE) -fno-strict-aliasing
 
 DISABLE_ASSERTS=-DNDEBUG=1
 ifdef DEBUG # set with `make .. DEBUG=1`
