@@ -9,7 +9,7 @@ ifdef VERBOSE
 CFLAGS+=-DMOREDEBUG=1
 endif
 else
-CFLAGS+=-O2 $(DISABLE_ASSERTS)
+CFLAGS+=-O3 $(DISABLE_ASSERTS)
 endif
 
 CSV_GREP_FILES = src/csvgrep.c src/csv_tokenizer.c

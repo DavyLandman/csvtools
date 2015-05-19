@@ -30,4 +30,4 @@ $ pv -a ../csv-data/canada_sensus/98-316-XWE2011001-1501-ONT.csv | bin/csvgrep -
 [ 258MiB/s]
 ```
 
-csvkit's csvcut does not offer different patterns for different columns.
+csvkit's csvgrep does not offer different patterns for different columns.
