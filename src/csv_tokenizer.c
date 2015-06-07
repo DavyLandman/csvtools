@@ -64,13 +64,13 @@ void tokenize_cells(struct csv_tokenizer* restrict tokenizer, size_t buffer_offs
 	case IN_QUOTE:
 		current_char--; // jump back, since the loops starts with increment
 		goto IN_QUOTE;
-	
+
 	case PREV_NEWLINE:
 		if ((*current_char == '\n' || *current_char == '\r')) {
 			while (++current_char < char_end && (*current_char == '\n' || *current_char == '\r'));
 		}
 		break;
-		
+
 	case PREV_CELL:
 		current_char--; // jump back, since the loops starts with increment
 		goto NORMAL_CELL;
@@ -125,7 +125,7 @@ AFTER_QUOTE:
 				*last_full = false; // is this correct? does it ever happen?
 				break;
 			}
-			
+
 			if (*current_char == '\n' || *current_char == '\r') {
 				cell->start = NULL;
 				cell->length = -1;
