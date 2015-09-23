@@ -28,6 +28,9 @@ int main(int argc, char** argv) {
 	while ((chars_read = fread(_buffer, sizeof(char), BUFFER_SIZE, _source)) > 0) {
 		do_unpipe(chars_read);
 	}
+    if (_source != stdin) {
+        fclose(_source);
+    }
 	return 0;
 }
 
@@ -57,7 +60,7 @@ static void parse_config(int argc, char** argv) {
 	}
 	if (optind < argc) {
 		_source = fopen(argv[optind], "r");
-		if (_source) {
+		if (!_source) {
 			fprintf(stderr, "Could not open file %s for reading\n", argv[optind]);
 			exit(1);
 		}
