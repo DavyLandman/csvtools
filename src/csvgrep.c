@@ -247,12 +247,15 @@ static size_t finish_config(size_t cells_found) {
 		fwrite(config.newline, sizeof(char), config.newline_length, stdout);
 	}
 
+    bool* used = calloc(sizeof(bool), half_config.n_patterns);
+	memset(used, 0, sizeof(bool) * half_config.n_patterns);
 	config.patterns = calloc(sizeof(Regex),config.column_count);
 	memset(config.patterns, 0, sizeof(Regex) * config.column_count);
 	for (int c = 0; c < config.column_count; c++) {
 		for (size_t pat = 0;  pat < half_config.n_patterns; pat++) {
-			if (_cells[c].length == half_config.column_lengths[pat]) {
+			if (!used[pat] && _cells[c].length == half_config.column_lengths[pat]) {
 				if (strncmp(_cells[c].start, half_config.columns[pat], half_config.column_lengths[pat])==0) {
+                    used[pat] = true;
 					LOG_V("Adding pattern %s for column: %s (%d)\n", half_config.patterns[pat], half_config.columns[pat],c);
 					// we have found the column
 					const char *pcreErrorStr;
@@ -272,6 +275,20 @@ static size_t finish_config(size_t cells_found) {
 			}
 		}
 	}
+
+    bool stop = false;
+    for (size_t pat = 0;  pat < half_config.n_patterns; pat++) {
+        if (!used[pat]) {
+            fprintf(stderr, "ERROR: The column \"%s\" was not found in the header\n", half_config.columns[pat]);
+            stop = true;
+        }
+    }
+    if (stop) {
+        fprintf(stderr, "Exiting\n");
+		exit(1);
+    }
+
+
 
 
 	free(half_config.columns);
