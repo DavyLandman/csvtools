@@ -40,6 +40,7 @@ static struct {
 	bool count_only;
 	bool negative;
 	bool or;
+    bool case_insensitive;
 	Regex* patterns;
 
 	int column_count;
@@ -140,6 +141,8 @@ static void print_help() {
 	fprintf(stderr, "\tWhich character to use as separator (default is ,)\n");
 	fprintf(stderr, "-p column/pattern/\n");
 	fprintf(stderr, "\tMultiple -p are allowed, they work as an AND \n");
+	fprintf(stderr, "-i\n");
+	fprintf(stderr, "\tuse case insensitive matching\n");
 	fprintf(stderr, "-c\n");
 	fprintf(stderr, "\tOnly count the rows that match\n");
 	fprintf(stderr, "-o\n");
@@ -160,6 +163,7 @@ static void parse_config(int argc, char** argv) {
 	config.separator = ',';
 	config.count_only = false;
 	config.negative = false;
+	config.case_insensitive = false;
 	config.or = false;
 
 	half_config.n_patterns = 0;
@@ -168,7 +172,7 @@ static void parse_config(int argc, char** argv) {
 	half_config.column_lengths = malloc(sizeof(size_t));
 
 	char c;
-	while ((c = getopt (argc, argv, "s:p:cvo")) != -1) {
+	while ((c = getopt (argc, argv, "s:p:cvio")) != -1) {
 		switch (c) {
 			case 's': 
 				config.separator = optarg[0];
@@ -176,6 +180,9 @@ static void parse_config(int argc, char** argv) {
 			case 'c': 
 				config.count_only = true;
 				break;
+            case 'i':
+                config.case_insensitive = true;
+                break;
 			case 'v':
 				config.negative = true;
 				break;
@@ -260,7 +267,7 @@ static size_t finish_config(size_t cells_found) {
 					// we have found the column
 					const char *pcreErrorStr;
 					int pcreErrorOffset;
-					config.patterns[c].pattern = pcre_compile(half_config.patterns[pat],PCRE_DOLLAR_ENDONLY |  PCRE_DOTALL | PCRE_NO_UTF8_CHECK, &pcreErrorStr, &pcreErrorOffset, NULL); 
+					config.patterns[c].pattern = pcre_compile(half_config.patterns[pat], PCRE_DOLLAR_ENDONLY |  PCRE_DOTALL | PCRE_NO_UTF8_CHECK | (config.case_insensitive ? PCRE_CASELESS : 0), &pcreErrorStr, &pcreErrorOffset, NULL); 
 					if(config.patterns[c].pattern == NULL) {
 						fprintf(stderr, "ERROR: Could not compile '%s': %s\n", half_config.patterns[pat], pcreErrorStr);
 						exit(1);
