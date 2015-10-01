@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <string.h>
 #include "debug.h"
 #include "csv_tokenizer.h"
 
@@ -19,6 +20,8 @@ struct csv_tokenizer {
 	Cell* restrict cells;
 	Cell const* restrict cells_end;
 
+    unsigned long long records_processed;
+
 	char separator;
 
 	enum tokenizer_state state;
@@ -32,12 +35,32 @@ struct csv_tokenizer* setup_tokenizer(char separator, const char* restrict buffe
 	tokenizer->cells_end = cells + cell_size - 2; // two room at the end
 	assert(tokenizer->cells < tokenizer->cells_end);
 
+    tokenizer->records_processed = 0;
 	tokenizer->state = FRESH;
 	return tokenizer;
 }
 
 void free_tokenizer(struct csv_tokenizer* restrict tokenizer) {
 	free(tokenizer);
+}
+
+static void print_current_line(const char* restrict current_char,const char* restrict buffer_start, const char* restrict buffer_end) {
+    const char* restrict start = current_char;
+    const char* restrict end = current_char;
+
+    // find surround newlines
+    while (--start > buffer_start  && *start != '\n' && *start != '\r');
+    start++;
+    while (++end < buffer_end  && *end != '\n' && *end != '\r');
+    end--;
+
+    // copy string such that we can put a \0 at the end
+    size_t line_length = end-start;
+    char* printable_string = calloc(sizeof(char), line_length + 1);
+    memcpy(printable_string, start, line_length);
+    printable_string[line_length] = '\0';
+    fprintf(stderr, "Current line: %s\n", printable_string);
+    free(printable_string);
 }
 
 void tokenize_cells(struct csv_tokenizer* restrict tokenizer, size_t buffer_offset, size_t buffer_read, size_t* restrict buffer_consumed, size_t* restrict cells_found, bool* restrict last_full) {
@@ -130,6 +153,7 @@ AFTER_QUOTE:
 				cell->start = NULL;
 				cell->length = -1;
 				cell++;
+                tokenizer->records_processed++;
 				// consume newline
 				while (++current_char < char_end && (*current_char == '\n' || *current_char == '\r'));
 				if (current_char == char_end) {
@@ -144,7 +168,8 @@ AFTER_QUOTE:
 				current_start = current_char;
 			}
 			else {
-				fprintf(stderr, "Invalid character: \"%c (\\%d)\" found after end of cell\n",*current_char, *current_char);
+				fprintf(stderr, "Invalid character: \"%c (\\%d)\" found after end of cell (after the %lluth record)\n",*current_char, *current_char,tokenizer->records_processed);
+                print_current_line(current_char, tokenizer->buffer, char_end);
 				exit(1);
 				return;
 			}
@@ -172,6 +197,7 @@ AFTER_QUOTE:
 			cell->start = NULL;
 			cell->length = -1;
 			cell++;
+            tokenizer->records_processed++;
 			// consume newline
 			while (++current_char < char_end && (*current_char == '\n' || *current_char == '\r'));
 			if (current_char == char_end) {
@@ -224,6 +250,7 @@ FOUND_CELL_END:
 				cell->start = NULL;
 				cell->length = -1;
 				cell++;
+                tokenizer->records_processed++;
 				// consume newline
 				while (++current_char < char_end && (*current_char == '\n' || *current_char == '\r'));
 				if (current_char == char_end) {
@@ -238,7 +265,8 @@ FOUND_CELL_END:
 				current_start = current_char;
 			}
 			else {
-				fprintf(stderr, "Invalid character-2: \"%c\" found after end of cell\n",*current_char);
+				fprintf(stderr, "Invalid character: \"%c (\\%d)\" found after end of cell (after the %lluth record)\n",*current_char, *current_char,tokenizer->records_processed);
+                print_current_line(current_char, tokenizer->buffer, char_end);
 				exit(1);
 				return;
 			}
@@ -252,3 +280,4 @@ FOUND_CELL_END:
 
 	LOG_V("tokenizer-done\t%d, %c (%lu) %d\n", tokenizer->state,  *(current_char-1), *buffer_consumed  , *last_full);
 }
+
