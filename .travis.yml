@@ -1,6 +1,6 @@
 language: c
 compiler: clang
-script: make test DISABLE_ASSERTS=""
+script: if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; then make test DISABLE_ASSERTS="" ; fi
 
 env:
   global:
@@ -12,11 +12,11 @@ addons:
     apt:
         packages:
             - libpcre3-dev
-coverity_scan:
-    project:
-        name: "DavyLandman/csvtools"
-        description: "CSV tools"
-    notification_email: davy.landman@gmail.com
-    #build_command_prepend: "<Your build preprocessing command here>"
-    build_command:   "make all"
-    branch_pattern: coverity_scan
+    coverity_scan:
+        project:
+            name: "DavyLandman/csvtools"
+            description: "CSV tools"
+        notification_email: davy.landman@gmail.com
+        #build_command_prepend: "<Your build preprocessing command here>"
+        build_command:   "make all"
+        branch_pattern: coverity_scan
