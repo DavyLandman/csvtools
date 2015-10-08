@@ -11,6 +11,9 @@ endif
 else
 CFLAGS+=-O3 $(DISABLE_ASSERTS)
 endif
+ifdef PERF
+CFLAGS+=-ggdb
+endif
 
 CSV_GREP_FILES = src/csvgrep.c src/csv_tokenizer.c
 CSV_CUT_FILES = src/csvcut.c src/csv_tokenizer.c
