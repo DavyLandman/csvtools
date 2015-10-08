@@ -18,6 +18,7 @@
 #endif
 #define HAS_VALUE_XOR_MASK(n) (~0UL/255 * (n))
 #define HAS_VALUE(x,m) (HAS_ZERO((x) ^ (m)))
+#define IS_ALIGNED(p,s) (((uintptr_t)(const void*)(p)) % (s) == 0)
 
 #define NEWLINE_MASK HAS_VALUE_XOR_MASK('\n')
 #define CARRIAGE_RETURN_MASK HAS_VALUE_XOR_MASK('\r')
@@ -237,8 +238,14 @@ AFTER_QUOTE:
 		else {
 			// start of a new field
 NORMAL_CELL:;
+			char sep = tokenizer->separator;
 #ifdef BIT_FIDDLING_HACK_SCAN
-	        const unsigned long* restrict large_steps = (const unsigned long*)(current_char+1); // we always read the first element
+            while (++current_char < char_end && !IS_ALIGNED(current_char, sizeof(unsigned long))) {
+                if (*current_char == sep || *current_char == '\n' || *current_char == '\r') {
+                    goto NORMAL_CELL_MATCH_FOUND;
+                }
+            }
+	        const unsigned long* restrict large_steps = (const unsigned long*)(current_char);
             unsigned long sep_mask = tokenizer->separator_mask;
 			while (large_steps < char_end_long) {
                 if (HAS_VALUE(*large_steps, sep_mask) || HAS_VALUE(*large_steps, NEWLINE_MASK) || HAS_VALUE(*large_steps, NEWLINE_MASK)) {
@@ -250,8 +257,8 @@ NORMAL_CELL:;
             current_char = (const char*)large_steps;
             current_char--; // rewind one so that we start at the beginning
 #endif
-			char sep = tokenizer->separator;
 			while (++current_char < char_end &&	*current_char != sep && *current_char != '\n' && *current_char != '\r');
+NORMAL_CELL_MATCH_FOUND:;
 			cell->start = current_start;
 			cell->length = (size_t)((current_char)-current_start);
 			cell++;
