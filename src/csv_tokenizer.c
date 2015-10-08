@@ -4,8 +4,24 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
+#include <limits.h>
 #include "debug.h"
 #include "csv_tokenizer.h"
+#define BIT_FIDDLING_HACK_SCAN
+
+#ifdef BIT_FIDDLING_HACK_SCAN
+// think about how large ul is for 64bit masks
+#if ULONG_MAX >> 32 == 0
+    #define HAS_ZERO(v) (((v) - 0x01010101UL) & ~(v) & 0x80808080UL)
+#else
+    #define HAS_ZERO(v) (((v) - 0x0101010101010101UL) & ~(v) & 0x8080808080808080UL)
+#endif
+#define HAS_VALUE_XOR_MASK(n) (~0UL/255 * (n))
+#define HAS_VALUE(x,m) (HAS_ZERO((x) ^ (m)))
+
+#define NEWLINE_MASK HAS_VALUE_XOR_MASK('\n')
+#define CARRIAGE_RETURN_MASK HAS_VALUE_XOR_MASK('\r')
+#endif
 
 enum tokenizer_state {
 	FRESH,
@@ -23,6 +39,9 @@ struct csv_tokenizer {
     unsigned long long records_processed;
 
 	char separator;
+#ifdef BIT_FIDDLING_HACK_SCAN
+    unsigned long separator_mask;
+#endif
 
 	enum tokenizer_state state;
 };
@@ -30,6 +49,9 @@ struct csv_tokenizer {
 struct csv_tokenizer* setup_tokenizer(char separator, const char* restrict buffer, Cell* restrict cells, size_t cell_size) {
 	struct csv_tokenizer* tokenizer = malloc(sizeof(struct csv_tokenizer));
 	tokenizer->separator = separator;
+#ifdef BIT_FIDDLING_HACK_SCAN
+    tokenizer->separator_mask = HAS_VALUE_XOR_MASK(separator);
+#endif
 	tokenizer->buffer = buffer;
 	tokenizer->cells = cells;
 	tokenizer->cells_end = cells + cell_size - 2; // two room at the end
@@ -66,7 +88,9 @@ static void print_current_line(const char* restrict current_char,const char* res
 void tokenize_cells(struct csv_tokenizer* restrict tokenizer, size_t buffer_offset, size_t buffer_read, size_t* restrict buffer_consumed, size_t* restrict cells_found, bool* restrict last_full) {
 	const char* restrict current_char = tokenizer->buffer + buffer_offset;
 	const char* restrict char_end = tokenizer->buffer + buffer_read;
-	const char* restrict char_end4 = tokenizer->buffer + buffer_read - 4;
+#ifdef BIT_FIDDLING_HACK_SCAN
+	const unsigned long* restrict char_end_long = (const unsigned long*)(char_end - sizeof(unsigned long));
+#endif
 	const char* restrict current_start = current_char;
 
 	Cell* restrict cell = tokenizer->cells;
@@ -213,28 +237,21 @@ AFTER_QUOTE:
 		else {
 			// start of a new field
 NORMAL_CELL:;
-			char sep = tokenizer->separator;
-			while (current_char < char_end4) {
-				if (current_char[1] == sep ||current_char[1] == '\n' || current_char[1] == '\r')  {
-					current_char += 1;
-					goto FOUND_CELL_END;
-				}
-				if (current_char[2] == sep ||current_char[2] == '\n' || current_char[2] == '\r')  {
-					current_char += 2;
-					goto FOUND_CELL_END;
-				}
-				if (current_char[3] == sep ||current_char[3] == '\n' || current_char[3] == '\r')  {
-					current_char += 3;
-					goto FOUND_CELL_END;
-				}
-				if (current_char[4] == sep ||current_char[4] == '\n' || current_char[4] == '\r')  {
-					current_char += 4;
-					goto FOUND_CELL_END;
-				}
-				current_char += 4;
+#ifdef BIT_FIDDLING_HACK_SCAN
+	        const unsigned long* restrict large_steps = (const unsigned long*)(current_char+1); // we always read the first element
+            unsigned long sep_mask = tokenizer->separator_mask;
+			while (large_steps < char_end_long) {
+                if (HAS_VALUE(*large_steps, sep_mask) || HAS_VALUE(*large_steps, NEWLINE_MASK) || HAS_VALUE(*large_steps, NEWLINE_MASK)) {
+                    // current part
+                    break;
+                }
+                large_steps++;
 			}
-			while (++current_char < char_end &&	*current_char != tokenizer->separator && *current_char != '\n' && *current_char != '\r');
-FOUND_CELL_END:
+            current_char = (const char*)large_steps;
+            current_char--; // rewind one so that we start at the beginning
+#endif
+			char sep = tokenizer->separator;
+			while (++current_char < char_end &&	*current_char != sep && *current_char != '\n' && *current_char != '\r');
 			cell->start = current_start;
 			cell->length = (size_t)((current_char)-current_start);
 			cell++;
