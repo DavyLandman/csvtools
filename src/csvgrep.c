@@ -295,9 +295,7 @@ static size_t finish_config(size_t cells_found) {
 		exit(1);
     }
 
-
-
-
+    free(used);
 	free(half_config.columns);
 	free(half_config.patterns);
 	free(half_config.column_lengths);
