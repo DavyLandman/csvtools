@@ -5,8 +5,8 @@
 
 struct csv_tokenizer;
 typedef struct {
-	char const * restrict start;
-	size_t length;
+    char const * restrict start;
+    size_t length;
 } Cell;
 
 struct csv_tokenizer* setup_tokenizer(char separator, const char* restrict buffer, Cell* restrict cells, size_t cell_size);
