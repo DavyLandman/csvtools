@@ -11,18 +11,22 @@
 #define BIT_FIDDLING_HACK_SCAN
 
 #ifdef BIT_FIDDLING_HACK_SCAN
-// think about how large ul is for 64bit masks
-#if ULONG_MAX >> 32 == 0
-    #define HAS_ZERO(v) (((v) - 0x01010101UL) & ~(v) & 0x80808080UL)
-#else
-    #define HAS_ZERO(v) (((v) - 0x0101010101010101UL) & ~(v) & 0x8080808080808080UL)
+
+#if UINT32_MAX == UINT_FAST32_MAX
+    #define UINT_FAST32_C(v) UINT32_C(v)
+#elif UINT64_MAX == UINT_FAST32_MAX
+    #define UINT_FAST32_C(v) UINT64_C(v)
 #endif
-#define HAS_VALUE_XOR_MASK(n) (~0UL/255 * (n))
+
+
+#define REPEAT(n) (~UINT_FAST32_C(0)/255 * (n))
+#define HAS_ZERO(v) (((v) - REPEAT(0x10)) & ~(v) & REPEAT(0x80))
+
 #define HAS_VALUE(x,m) (HAS_ZERO((x) ^ (m)))
 #define IS_ALIGNED(p,s) (((uintptr_t)(const void*)(p)) % (s) == 0)
 
-#define NEWLINE_MASK HAS_VALUE_XOR_MASK('\n')
-#define CARRIAGE_RETURN_MASK HAS_VALUE_XOR_MASK('\r')
+#define NEWLINE_MASK REPEAT('\n')
+#define CARRIAGE_RETURN_MASK REPEAT('\r')
 #endif
 
 enum tokenizer_state {
@@ -42,7 +46,7 @@ struct csv_tokenizer {
 
 	char separator;
 #ifdef BIT_FIDDLING_HACK_SCAN
-    unsigned long separator_mask;
+    uint_fast32_t separator_mask;
 #endif
 
 	enum tokenizer_state state;
@@ -52,7 +56,7 @@ struct csv_tokenizer* setup_tokenizer(char separator, const char* restrict buffe
 	struct csv_tokenizer* tokenizer = malloc(sizeof(struct csv_tokenizer));
 	tokenizer->separator = separator;
 #ifdef BIT_FIDDLING_HACK_SCAN
-    tokenizer->separator_mask = HAS_VALUE_XOR_MASK(separator);
+    tokenizer->separator_mask = REPEAT(separator);
 #endif
 	tokenizer->buffer = buffer;
 	tokenizer->cells = cells;
@@ -91,7 +95,7 @@ void tokenize_cells(struct csv_tokenizer* restrict tokenizer, size_t buffer_offs
 	const char* restrict current_char = tokenizer->buffer + buffer_offset;
 	const char* restrict char_end = tokenizer->buffer + buffer_read;
 #ifdef BIT_FIDDLING_HACK_SCAN
-	const unsigned long* restrict char_end_long = (const unsigned long*)(char_end - sizeof(unsigned long));
+	const uint_fast32_t* restrict char_end_big_steps = (const uint_fast32_t*)(char_end - sizeof(uint_fast32_t));
 #endif
 	const char* restrict current_start = current_char;
 
@@ -241,14 +245,14 @@ AFTER_QUOTE:
 NORMAL_CELL:;
 			char sep = tokenizer->separator;
 #ifdef BIT_FIDDLING_HACK_SCAN
-            while (++current_char < char_end && !IS_ALIGNED(current_char, sizeof(unsigned long))) {
+            while (++current_char < char_end && !IS_ALIGNED(current_char, sizeof(uint_fast32_t))) {
                 if (*current_char == sep || *current_char == '\n' || *current_char == '\r') {
                     goto NORMAL_CELL_MATCH_FOUND;
                 }
             }
-	        const unsigned long* restrict large_steps = (const unsigned long*)(current_char);
-            unsigned long sep_mask = tokenizer->separator_mask;
-			while (large_steps < char_end_long) {
+	        const uint_fast32_t* restrict large_steps = (const uint_fast32_t*)(current_char);
+            uint_fast32_t sep_mask = tokenizer->separator_mask;
+			while (large_steps < char_end_big_steps) {
                 if (HAS_VALUE(*large_steps, sep_mask) || HAS_VALUE(*large_steps, NEWLINE_MASK) || HAS_VALUE(*large_steps, NEWLINE_MASK)) {
                     // current part
                     break;
