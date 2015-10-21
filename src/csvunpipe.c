@@ -1,7 +1,4 @@
 #include <stdio.h>
-#include <stdint.h>
-#include <stddef.h>
-#include <limits.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdbool.h>
@@ -12,34 +9,9 @@
 #include "hints.h"
 
 
-
 #define NULL_ENCODED '\x1a'
 
-#if UINT32_MAX == UINT_FAST32_MAX
-    #define UINT_FAST32_C(v) UINT32_C(v)
-#elif UINT64_MAX == UINT_FAST32_MAX
-    #define UINT_FAST32_C(v) UINT64_C(v)
-#else
-    #error "Only added code for 32 and 64 bit scanning"
-#endif
-
-#define REPEAT(n) (~UINT_FAST32_C(0)/255 * (n))
-//#define HAS_ZERO(v) (((v) - REPEAT(0x10)) & ~(v) & REPEAT(0x80))
-#if UINT32_MAX == UINT_FAST32_MAX
-    #define HAS_ZERO(v) ((((v) + 0x7efefeff) ^ ~(v)) & 0x81010100)
-#elif UINT64_MAX == UINT_FAST32_MAX
-    #define HAS_ZERO(v) ((((v) + ((0x7efefeffULL << 32) | 0x7efefeff)) ^ ~(v)) & ((0x81010100ULL << 32) | 0x81010100))
-#endif
-
-#define HAS_VALUE(x,m) (HAS_ZERO((x) ^ (m)))
-#define IS_ALIGNED(p,s) (((uintptr_t)(const void*)(p)) % (s) == 0)
-#define FLOOR_ALIGNED(p,s) ((const void*)((((uintptr_t)(const void*)(p)) / (s)) * (s)))
-
-#define NULL_ENCODED_MASK REPEAT(NULL_ENCODED)
-
-#ifndef BUFFER_SIZE
-    #define BUFFER_SIZE 8*1024*1024
-#endif
+//#define BUFFER_SIZE 3
 
 static char _buffer[BUFFER_SIZE];
 
@@ -95,54 +67,23 @@ static void parse_config(int argc, char** argv) {
     }
 }
 
-#define CHECK_REPLACE(p,off, ch, rp) if (((char* restrict)(p))[off] == (ch)) { ((char* restrict)(p))[off] = (rp); }
-
-#if UINT32_MAX == UINT_FAST32_MAX
-    #define CHECK_REPLACE_LARGE(p, ch, rp) \
-        CHECK_REPLACE((p), 0, ch, rp) \
-        CHECK_REPLACE((p), 1, ch, rp) \
-        CHECK_REPLACE((p), 2, ch, rp) \
-        CHECK_REPLACE((p), 3, ch, rp) 
-#elif UINT64_MAX == UINT_FAST32_MAX
-    #define CHECK_REPLACE_LARGE(p, ch, rp) \
-        CHECK_REPLACE((p), 0, ch, rp) \
-        CHECK_REPLACE((p), 1, ch, rp) \
-        CHECK_REPLACE((p), 2, ch, rp) \
-        CHECK_REPLACE((p), 3, ch, rp) \
-        CHECK_REPLACE((p), 4, ch, rp) \
-        CHECK_REPLACE((p), 5, ch, rp) \
-        CHECK_REPLACE((p), 6, ch, rp) \
-        CHECK_REPLACE((p), 7, ch, rp) 
-#else
-    #error "Only added code for 32 and 64 bit scanning"
-#endif
-
-#define SCAN_REPLACE(start, end, find, repl) \
-    do { \
-        char* restrict __current_char = (start); \
-        while (__current_char < (end) && !IS_ALIGNED(__current_char, sizeof(uint_fast32_t))) { \
-            CHECK_REPLACE(__current_char, 0, find, repl); \
-            __current_char++; \
-        } \
-        const uint_fast32_t* restrict __large_steps = (const uint_fast32_t* restrict)__current_char; \
-        const uint_fast32_t* restrict __large_end = FLOOR_ALIGNED((end), sizeof(uint_fast32_t)); \
-        while (__large_steps < __large_end) { \
-            if (HAS_VALUE(*__large_steps, REPEAT((find)))) { \
-                CHECK_REPLACE_LARGE(__large_steps, (find), (repl)); \
-            } \
-            __large_steps++; \
-        } \
-        __current_char = (char* restrict)__large_steps; \
-        while (__current_char < (end)) { \
-            CHECK_REPLACE(__current_char, 0, find, repl); \
-            __current_char++; \
-        } \
-    } \
-    while(0); 
-
 static void do_unpipe(size_t chars_read) {
-    SCAN_REPLACE(_buffer, _buffer + chars_read, '\0', '\n');
-    SCAN_REPLACE(_buffer, _buffer + chars_read, NULL_ENCODED, '\0');
+    char* restrict current_char = _buffer;
+    char const* restrict char_end = _buffer + chars_read;
+
+    while (current_char != NULL) {
+        current_char = memchr(current_char, '\0', char_end - current_char);
+        if (current_char != NULL) {
+            *current_char = '\n';
+        }
+    }
+    current_char = _buffer;
+    while (current_char != NULL) {
+        current_char = memchr(current_char, NULL_ENCODED, char_end - current_char);
+        if (current_char != NULL) {
+            *current_char = '\0';
+        }
+    }
     fwrite(_buffer, sizeof(char), chars_read, stdout);
 }
 

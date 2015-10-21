@@ -1,33 +1,11 @@
 #include <stddef.h>
-#include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
-#include <limits.h>
 #include "debug.h"
 #include "csv_tokenizer.h"
-#define BIT_FIDDLING_HACK_SCAN
-
-#ifdef BIT_FIDDLING_HACK_SCAN
-
-#if UINT32_MAX == UINT_FAST32_MAX
-    #define UINT_FAST32_C(v) UINT32_C(v)
-#elif UINT64_MAX == UINT_FAST32_MAX
-    #define UINT_FAST32_C(v) UINT64_C(v)
-#endif
-
-
-#define REPEAT(n) (~UINT_FAST32_C(0)/255 * (n))
-#define HAS_ZERO(v) (((v) - REPEAT(0x10)) & ~(v) & REPEAT(0x80))
-
-#define HAS_VALUE(x,m) (HAS_ZERO((x) ^ (m)))
-#define IS_ALIGNED(p,s) (((uintptr_t)(const void*)(p)) % (s) == 0)
-
-#define NEWLINE_MASK REPEAT('\n')
-#define CARRIAGE_RETURN_MASK REPEAT('\r')
-#endif
 
 enum tokenizer_state {
     FRESH,
@@ -45,9 +23,6 @@ struct csv_tokenizer {
     unsigned long long records_processed;
 
     char separator;
-#ifdef BIT_FIDDLING_HACK_SCAN
-    uint_fast32_t separator_mask;
-#endif
 
     enum tokenizer_state state;
 };
@@ -55,9 +30,6 @@ struct csv_tokenizer {
 struct csv_tokenizer* setup_tokenizer(char separator, const char* restrict buffer, Cell* restrict cells, size_t cell_size) {
     struct csv_tokenizer* tokenizer = malloc(sizeof(struct csv_tokenizer));
     tokenizer->separator = separator;
-#ifdef BIT_FIDDLING_HACK_SCAN
-    tokenizer->separator_mask = REPEAT(separator);
-#endif
     tokenizer->buffer = buffer;
     tokenizer->cells = cells;
     tokenizer->cells_end = cells + cell_size - 2; // two room at the end
@@ -94,9 +66,7 @@ static void print_current_line(const char* restrict current_char,const char* res
 void tokenize_cells(struct csv_tokenizer* restrict tokenizer, size_t buffer_offset, size_t buffer_read, size_t* restrict buffer_consumed, size_t* restrict cells_found, bool* restrict last_full) {
     const char* restrict current_char = tokenizer->buffer + buffer_offset;
     const char* restrict char_end = tokenizer->buffer + buffer_read;
-#ifdef BIT_FIDDLING_HACK_SCAN
-    const uint_fast32_t* restrict char_end_big_steps = (const uint_fast32_t*)(char_end - sizeof(uint_fast32_t));
-#endif
+    const char* restrict char_end4 = tokenizer->buffer + buffer_read - 4;
     const char* restrict current_start = current_char;
 
     Cell* restrict cell = tokenizer->cells;
@@ -244,26 +214,27 @@ AFTER_QUOTE:
             // start of a new field
 NORMAL_CELL:;
             char sep = tokenizer->separator;
-#ifdef BIT_FIDDLING_HACK_SCAN
-            while (++current_char < char_end && !IS_ALIGNED(current_char, sizeof(uint_fast32_t))) {
-                if (*current_char == sep || *current_char == '\n' || *current_char == '\r') {
-                    goto NORMAL_CELL_MATCH_FOUND;
+            while (current_char < char_end4) {
+                if (current_char[1] == sep ||current_char[1] == '\n' || current_char[1] == '\r')  {
+                    current_char += 1;
+                    goto FOUND_CELL_END;
                 }
-            }
-            const uint_fast32_t* restrict large_steps = (const uint_fast32_t*)(current_char);
-            uint_fast32_t sep_mask = tokenizer->separator_mask;
-            while (large_steps < char_end_big_steps) {
-                if (HAS_VALUE(*large_steps, sep_mask) || HAS_VALUE(*large_steps, NEWLINE_MASK) || HAS_VALUE(*large_steps, NEWLINE_MASK)) {
-                    // current part
-                    break;
+                if (current_char[2] == sep ||current_char[2] == '\n' || current_char[2] == '\r')  {
+                    current_char += 2;
+                    goto FOUND_CELL_END;
                 }
-                large_steps++;
+                if (current_char[3] == sep ||current_char[3] == '\n' || current_char[3] == '\r')  {
+                    current_char += 3;
+                    goto FOUND_CELL_END;
+                }
+                if (current_char[4] == sep ||current_char[4] == '\n' || current_char[4] == '\r')  {
+                    current_char += 4;
+                    goto FOUND_CELL_END;
+                }
+                current_char += 4;
             }
-            current_char = (const char*)large_steps;
-            current_char--; // rewind one so that we start at the beginning
-#endif
-            while (++current_char < char_end &&    *current_char != sep && *current_char != '\n' && *current_char != '\r');
-NORMAL_CELL_MATCH_FOUND:;
+            while (++current_char < char_end &&	*current_char != tokenizer->separator && *current_char != '\n' && *current_char != '\r');
+FOUND_CELL_END:
             cell->start = current_start;
             cell->length = (size_t)((current_char)-current_start);
             cell++;
