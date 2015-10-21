@@ -24,7 +24,12 @@
 #endif
 
 #define REPEAT(n) (~UINT_FAST32_C(0)/255 * (n))
-#define HAS_ZERO(v) (((v) - REPEAT(0x10)) & ~(v) & REPEAT(0x80))
+//#define HAS_ZERO(v) (((v) - REPEAT(0x10)) & ~(v) & REPEAT(0x80))
+#if UINT32_MAX == UINT_FAST32_MAX
+    #define HAS_ZERO(v) ((((v) + 0x7efefeff) ^ ~(v)) & 0x81010100)
+#elif UINT64_MAX == UINT_FAST32_MAX
+    #define HAS_ZERO(v) ((((v) + ((0x7efefeffULL << 32) | 0x7efefeff)) ^ ~(v)) & ((0x81010100ULL << 32) | 0x81010100))
+#endif
 
 #define HAS_VALUE(x,m) (HAS_ZERO((x) ^ (m)))
 #define IS_ALIGNED(p,s) (((uintptr_t)(const void*)(p)) % (s) == 0)
