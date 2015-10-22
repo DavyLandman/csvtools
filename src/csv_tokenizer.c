@@ -148,7 +148,6 @@ IN_QUOTE:;
                 }
             }
 #else
-            const char* restrict char_end4 = tokenizer->buffer + buffer_read - 4;
             while (++current_char < char_end) {
                 if (*current_char == '"') {
                     const char* peek = current_char + 1;
@@ -262,6 +261,7 @@ NORMAL_CELL:;
                 current_char = char_end;
             }
 #else
+            const char* restrict char_end4 = tokenizer->buffer + buffer_read - 4;
             char sep = tokenizer->separator;
             while (current_char < char_end4) {
                 if (current_char[1] == sep ||current_char[1] == '\n' || current_char[1] == '\r')  {
