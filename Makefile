@@ -20,6 +20,7 @@ CSV_CUT_FILES = src/csvcut.c src/csv_tokenizer.c
 CSV_PIPE_FILES = src/csvpipe.c
 CSV_UNPIPE_FILES = src/csvunpipe.c
 CSV_AWKPIPE_FILES = src/csvawkpipe.c
+BENCH_FILES = bench/runner.c bench/generate.c bench/pcg_basic.c
 
 .PHONY: all test clean test-csvgrep test-csvcut test-csvpipe test-csvunpipe test-all-sizes install
 
@@ -27,6 +28,11 @@ all: bin/csvcut bin/csvgrep bin/csvpipe bin/csvunpipe bin/csvawkpipe bin/csvawk
 
 # yes, we recompile csv_tokenizer, it keeps the makefile simpler and it allows
 # the compiler to do some cross module optimizations :)
+
+bench: bin/bench
+bin/bench: $(BENCH_FILES) bin/ all
+	$(CC) -o $@ $(LinkFlags) $(CFLAGS) $(BENCH_FILES) 
+
 
 csvcut: bin/csvcut
 bin/csvcut: $(CSV_CUT_FILES) Makefile bin/
