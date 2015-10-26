@@ -38,7 +38,7 @@ static void print_run(const char* restrict command, const char* restrict buffer,
     run(command, buffer, buffer_size, repeats, results);
     fprintf(stdout, "\"%s\"", command);
     for (unsigned int r = 0; r < repeats; r++) {
-        fprintf(stdout, ",%fMB/s", ( buffer_size / results[r]) / (1024*1024) );
+        fprintf(stdout, ",%f", ( buffer_size / results[r]) / (1024*1024) );
     }
     fprintf(stdout, "\n");
     free(results);
@@ -74,6 +74,11 @@ int main(int argc, char** argv) {
     fprintf(stderr, "Preparing data (%zd bytes)\n",bench_size); 
     size_t data_filled = generate_csv(buffer, bench_size, 42, 11, columns);
     fprintf(stderr, "Data ready (%zd bytes)\n",data_filled); 
+    fprintf(stdout, "command");
+    for (unsigned int r = 0; r < repeats; r++) {
+        fprintf(stdout, ",run%u", r);
+    }
+    fprintf(stdout, "\n");
     print_run("wc -l > /dev/null", buffer, data_filled, repeats);
     print_run("wc -l > /dev/null", buffer, data_filled, repeats);
     
