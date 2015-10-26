@@ -5,8 +5,8 @@
 #include "generate.h"
 
 static void print_help() {
-    fprintf(stderr,"usage: bench [OPTIONS]");
-    fprintf(stderr,"options:");
+    fprintf(stderr,"usage: bench [OPTIONS]\n");
+    fprintf(stderr,"options:\n");
     fprintf(stderr, "-b 200\n");
     fprintf(stderr, "\tbench size in MBs\n");
     fprintf(stderr, "-e 2\n");
