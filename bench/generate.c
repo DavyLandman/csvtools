@@ -66,23 +66,23 @@ static size_t random_cell(pcg32_random_t* rng, char* restrict target, const unsi
             for (size_t c = 0; c < cell_size; c++) {
                 *target++ = random_alpha(rng);
                 if (c + 2 < cell_size) {
-                    if (random_float(rng) > 0.6) {
+                    if (one_every(rng, 4)) {
                         *target++ = ' ';
                         cell_size--;
                         written++;
                     }
-                    else if (random_float(rng) > 0.7) {
+                    else if (one_every(rng, 6)) {
                         *target++ = ',';
                         cell_size--;
                         written++;
                     }
-                    else if (random_float(rng) < 0.01) {
+                    else if (one_every(rng, 100)) {
                         *target++ ='"';
                         *target++ ='"';
                         written += 2;
                         cell_size -= 2;
                     }
-                    else if (random_float(rng) < 0.001) {
+                    else if (one_every(rng, 1000)) {
                         *target++ ='\n';
                         cell_size--;
                         written++;
