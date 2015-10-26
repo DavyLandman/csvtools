@@ -62,28 +62,31 @@ static size_t random_cell(pcg32_random_t* rng, char* restrict target, const unsi
         else {
             *target++ = '"';
             written++;
-            for (size_t c = 0; c < cell_size - 2; c++) {
+            cell_size -= 2;
+            for (size_t c = 0; c < cell_size; c++) {
                 *target++ = random_alpha(rng);
-                if (random_float(rng) > 0.6) {
-                    *target++ = ' ';
-                    cell_size--;
-                    written++;
-                }
-                else if (random_float(rng) > 0.7) {
-                    *target++ = ',';
-                    cell_size--;
-                    written++;
-                }
-                else if (random_float(rng) < 0.01) {
-                    *target++ ='"';
-                    *target++ ='"';
-                    written += 2;
-                    cell_size-=2;
-                }
-                else if (random_float(rng) < 0.001) {
-                    *target++ ='\n';
-                    cell_size--;
-                    written++;
+                if (c + 2 < cell_size) {
+                    if (random_float(rng) > 0.6) {
+                        *target++ = ' ';
+                        cell_size--;
+                        written++;
+                    }
+                    else if (random_float(rng) > 0.7) {
+                        *target++ = ',';
+                        cell_size--;
+                        written++;
+                    }
+                    else if (random_float(rng) < 0.01) {
+                        *target++ ='"';
+                        *target++ ='"';
+                        written += 2;
+                        cell_size -= 2;
+                    }
+                    else if (random_float(rng) < 0.001) {
+                        *target++ ='\n';
+                        cell_size--;
+                        written++;
+                    }
                 }
             }
             *target++ = '"';
