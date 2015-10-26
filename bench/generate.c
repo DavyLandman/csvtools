@@ -2,25 +2,37 @@
 #include <limits.h>
 #include <string.h>
 #include <math.h>
+#include <stdbool.h>
 #include "pcg_basic.h"
 #include "generate.h"
 
 
 #define MAX(a,b) (((a) > (b)) ? (a) : (b))
 
+inline static bool one_every(pcg32_random_t* rng, int one_in) {
+    return pcg32_random_r(rng) < (UINT32_MAX / one_in);
+}
+
 static double random_float(pcg32_random_t* rng) {
     return ldexp(pcg32_random_r(rng), -32);
 }
 
+#define RANDOM_RANGE(rng, a,b) ((a) + pcg32_boundedrand_r((rng), (b) - (a)))
+
 static char random_alpha(pcg32_random_t* rng) {
-    if (pcg32_random_r(rng) > (UINT32_MAX / 2)) {
-        return 'A' + pcg32_boundedrand_r(rng, 'Z' - 'A');
+    if (one_every(rng, 2)) {
+        return RANDOM_RANGE(rng, 'A', 'Z');
     }
-    return 'a' + pcg32_boundedrand_r(rng, 'z' - 'a');
+    return RANDOM_RANGE(rng, 'a', 'z');
 }
+
+static char random_numeric(pcg32_random_t* rng) {
+    return RANDOM_RANGE(rng, '0', '9');
+}
+
 static char random_alpha_numeric(pcg32_random_t* rng) {
-    if (pcg32_random_r(rng) > (UINT32_MAX / 2)) {
-        return '0' + pcg32_boundedrand_r(rng, '9' - '0');
+    if (one_every(rng, 2)) {
+        return random_numeric(rng);
     }
     return random_alpha(rng); 
 }
@@ -37,7 +49,12 @@ static size_t random_cell(pcg32_random_t* rng, char* restrict target, const unsi
         if (cell_size < 2) {
             cell_size = 2;
         }
-        if (random_float(rng) > 0.1) {
+        if (one_every(rng, 3)) {
+            for (size_t c = 0; c < cell_size; c++) {
+                *target++ = random_numeric(rng);
+            }
+        }
+        else if (!one_every(rng, 10)) {
             for (size_t c = 0; c < cell_size; c++) {
                 *target++ = random_alpha_numeric(rng);
             }
