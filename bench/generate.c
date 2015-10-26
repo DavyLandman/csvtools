@@ -99,7 +99,7 @@ static size_t random_cell(pcg32_random_t* rng, char* restrict target, const unsi
     return written;
 }
 
-size_t generate_csv(char* restrict buffer, size_t size, unsigned int columns) {
+size_t generate_csv(char* restrict buffer, size_t size, unsigned int seed1, unsigned int seed2, unsigned int columns) {
     char* restrict current_char = buffer;
     for (unsigned int i = 1; i <= columns; i++) {
         if (i > 1) {
@@ -118,7 +118,7 @@ size_t generate_csv(char* restrict buffer, size_t size, unsigned int columns) {
 
     pcg32_random_t rng;
 
-    pcg32_srandom_r(&rng, 42u, 11u);
+    pcg32_srandom_r(&rng, seed1, seed2);
 
     unsigned int cell_large_max = 255;
 
