@@ -40,14 +40,38 @@ static void run(const char* restrict command, const char* restrict buffer, size_
     }
 }
 
+/* base on source: nneonneo in http://stackoverflow.com/questions/12890008/replacing-character-in-a-string */
+char *replace(const char *s, char ch, const char *repl) {
+    int count = 0;
+    for(const char* t=s; *t; t++)
+        count += (*t == ch);
+
+    size_t rlen = strlen(repl);
+    char *res = malloc(strlen(s) + (rlen-1)*count + 1);
+    char *ptr = res;
+    for(const char* t=s; *t; t++) {
+        if(*t == ch) {
+            memcpy(ptr, repl, rlen);
+            ptr += rlen;
+        } else {
+            *ptr++ = *t;
+        }
+    }
+    *ptr = 0;
+    return res;
+}
+
+
 static void print_run(const char* restrict command, const char* restrict buffer, size_t buffer_size, unsigned int buffer_copy, unsigned int repeats) {
     double* results = calloc(repeats, sizeof(double));
     run(command, buffer, buffer_size, buffer_copy, repeats, results);
-    fprintf(stdout, "\"%s\"", command);
+    char* command_escaped = replace(command, '"', "\"\"");
+    fprintf(stdout, "\"%s\"", command_escaped);
     for (unsigned int r = 0; r < repeats; r++) {
         fprintf(stdout, ",%f", ( (buffer_size * buffer_copy) / results[r]) / (1024*1024) );
     }
     fprintf(stdout, "\n");
+    free(command_escaped);
     free(results);
 }
 
