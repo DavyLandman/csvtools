@@ -5,6 +5,9 @@
 #include "pcg_basic.h"
 #include "generate.h"
 
+
+#define MAX(a,b) (((a) > (b)) ? (a) : (b))
+
 static double random_float(pcg32_random_t* rng) {
     return ldexp(pcg32_random_r(rng), -32);
 }
@@ -17,21 +20,57 @@ static char random_alpha(pcg32_random_t* rng) {
 }
 static char random_alpha_numeric(pcg32_random_t* rng) {
     if (pcg32_random_r(rng) > (UINT32_MAX / 2)) {
-        return '0' + pcg32_boundedrand_r(rng, '0' - '9');
+        return '0' + pcg32_boundedrand_r(rng, '9' - '0');
     }
     return random_alpha(rng); 
 }
 
-static size_t random_cell(pcg32_random_t* rng, char* restrict target, unsigned int columns, size_t cell_size_max) {
+
+static size_t random_cell(pcg32_random_t* rng, char* restrict target, const unsigned int columns, const size_t cell_size_max) {
     size_t written = 0;
     for (unsigned int i = 0; i < columns; i++) {
         if (i > 0) {
             *target++ =',';
             written++;
         }
-        size_t cell_size = pcg32_boundedrand_r(rng, cell_size_max);
-        for (size_t c = 0; c < cell_size; c++) {
-            *target++ = random_alpha(rng);
+        size_t cell_size = pcg32_boundedrand_r(rng, random_float(rng) < 0.2 ? cell_size_max : MAX(1, cell_size_max / 40));
+        if (cell_size < 2) {
+            cell_size = 2;
+        }
+        if (random_float(rng) > 0.1) {
+            for (size_t c = 0; c < cell_size; c++) {
+                *target++ = random_alpha_numeric(rng);
+            }
+        }
+        else {
+            *target++ = '"';
+            written++;
+            for (size_t c = 0; c < cell_size - 2; c++) {
+                *target++ = random_alpha(rng);
+                if (random_float(rng) > 0.6) {
+                    *target++ = ' ';
+                    cell_size--;
+                    written++;
+                }
+                else if (random_float(rng) > 0.7) {
+                    *target++ = ',';
+                    cell_size--;
+                    written++;
+                }
+                else if (random_float(rng) < 0.01) {
+                    *target++ ='"';
+                    *target++ ='"';
+                    written += 2;
+                    cell_size-=2;
+                }
+                else if (random_float(rng) < 0.001) {
+                    *target++ ='\n';
+                    cell_size--;
+                    written++;
+                }
+            }
+            *target++ = '"';
+            written++;
         }
         written += cell_size;
     }
@@ -61,15 +100,10 @@ size_t generate_csv(char* restrict buffer, size_t size, unsigned int columns) {
 
     pcg32_srandom_r(&rng, 42u, 11u);
 
-    unsigned int cell_large_max = 100;
-    unsigned int cell_normal_max = 10;
+    unsigned int cell_large_max = 255;
 
-    while (size > ((cell_normal_max + 1) * columns + 1)) {
-        size_t cell_size_max = pcg32_boundedrand_r(&rng, (size > ((cell_large_max + 1) * columns) && random_float(&rng) < 0.3) ? cell_large_max : cell_normal_max);
-        if (cell_size_max < 2) {
-            cell_size_max = 2;
-        }
-        size_t written = random_cell(&rng, current_char, columns, cell_size_max);
+    while (size > ((cell_large_max + 1) * columns + 1)) {
+        size_t written = random_cell(&rng, current_char, columns, cell_large_max);
         current_char += written;
         size -= written;
     }
