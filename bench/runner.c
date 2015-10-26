@@ -62,16 +62,18 @@ char *replace(const char *s, char ch, const char *repl) {
 }
 
 
-static void print_run(const char* restrict command, const char* restrict buffer, size_t buffer_size, unsigned int buffer_copy, unsigned int repeats) {
+static void print_run(const char* name, const char* restrict command, const char* restrict buffer, size_t buffer_size, unsigned int buffer_copy, unsigned int repeats) {
     double* results = calloc(repeats, sizeof(double));
     run(command, buffer, buffer_size, buffer_copy, repeats, results);
     char* command_escaped = replace(command, '"', "\"\"");
-    fprintf(stdout, "\"%s\"", command_escaped);
+    char* name_escaped = replace(name, '"', "\"\"");
+    fprintf(stdout, "\"%s\",\"%s\"", name_escaped, command_escaped);
     for (unsigned int r = 0; r < repeats; r++) {
         fprintf(stdout, ",%f", ( (buffer_size * buffer_copy) / results[r]) / (1024*1024) );
     }
     fprintf(stdout, "\n");
     free(command_escaped);
+    free(name_escaped);
     free(results);
 }
 
@@ -130,14 +132,18 @@ int main(int argc, char** argv) {
     fprintf(stderr, "Preparing data (%zd bytes)\n",bench_size); 
     size_t data_filled = generate_csv(buffer, bench_size, seed1, seed2, columns);
     fprintf(stderr, "Data ready (%zd bytes)\n",data_filled); 
-    fprintf(stdout, "command");
+    fprintf(stdout, "name,command");
     for (unsigned int r = 0; r < repeats; r++) {
         fprintf(stdout, ",run%u", r);
     }
     fprintf(stdout, "\n");
     fprintf(stderr, "Running csvgrep\n");
-    print_run("wc -l > /dev/null", buffer, data_filled, bench_copy, repeats);
-    print_run("wc -l > /dev/null", buffer, data_filled, bench_copy, repeats);
+    char command[255];
+    print_run("csvgrep 1st column", "bin/csvgrep -p 'column1/[a-e]+/' > /dev/null", buffer, data_filled, bench_copy, repeats);
+    sprintf(command, "bin/csvgrep -p 'column%u/[a-e]+/' > /dev/null", columns / 2);
+    print_run("csvgrep middle column", command, buffer, data_filled, bench_copy, repeats);
+    sprintf(command, "bin/csvgrep -p 'column%u/[a-e]+/' > /dev/null", columns);
+    print_run("csvgrep end column", command , buffer, data_filled, bench_copy, repeats);
     
     return 0;
 }
