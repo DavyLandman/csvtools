@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <unistd.h>
 #include <string.h>
 #include "timer.h"
@@ -18,6 +19,8 @@ static void print_help() {
     fprintf(stderr, "\tnumber of measure runs\n");
     fprintf(stderr, "-s 42\n");
     fprintf(stderr, "\tseed for random generator\n");
+    fprintf(stderr, "-x\n");
+    fprintf(stderr, "\tonly run the csvtools (used for comparing new commits)\n");
 }
 
 static void run(const char* restrict command, const char* restrict buffer, size_t buffer_size, unsigned int buffer_copy, unsigned int repeats, double* results) {
@@ -154,9 +157,10 @@ int main(int argc, char** argv) {
     unsigned int bench_copy = 2;
     unsigned int seed1 = xxh_mix(29, 42);
     unsigned int seed2 = xxh_mix(13, 11);
+    bool only_csvtools = false;
 
     char c;
-    while ((c = getopt (argc, argv, "b:c:r:e:s:h")) != -1) {
+    while ((c = getopt (argc, argv, "b:c:r:e:s:xh")) != -1) {
         switch (c) {
             case 'b':
                 sscanf(optarg, "%zd", &bench_size);
@@ -175,6 +179,9 @@ int main(int argc, char** argv) {
                 sscanf(optarg, "%u", &seed1);
                 seed1 = xxh_mix(seed1, 42);
                 break;
+            case 'x':
+                only_csvtools = true;
+                break;
             case '?':
             case 'h':
             default:
@@ -192,11 +199,16 @@ int main(int argc, char** argv) {
 
 
     fprintf(stderr, "Running pipe bench fist\n");
-    print_run("bench pipe", "cat", "cat > /dev/null", buffer, data_filled, bench_copy, repeats);
-    print_run("bench pipe", "wc -l",  "wc -l > /dev/null", buffer, data_filled, bench_copy, repeats);
-    print_run("bench pipe", "md5sum", "md5sum > /dev/null", buffer, data_filled, bench_copy, repeats);
+    if (!only_csvtools) {
+        print_run("bench pipe", "cat", "cat > /dev/null", buffer, data_filled, bench_copy, repeats);
+        print_run("bench pipe", "wc -l",  "wc -l > /dev/null", buffer, data_filled, bench_copy, repeats);
+        print_run("bench pipe", "md5sum", "md5sum > /dev/null", buffer, data_filled, bench_copy, repeats);
+    }
+
     run_csvtools_grep(buffer, data_filled, bench_copy, repeats, columns);
-    run_gnu_grep1(buffer, data_filled, bench_copy, repeats, columns);
+    if (!only_csvtools) {
+        run_gnu_grep1(buffer, data_filled, bench_copy, repeats, columns);
+    }
 
     return 0;
 }
