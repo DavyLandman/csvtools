@@ -62,16 +62,30 @@ char *replace(const char *s, char ch, const char *repl) {
     return res;
 }
 
+int compare_double(const void *d1, const void *d2) { 
+    return ( *(double*)d1 < *(double*)d2) ? 1 : -1 ; 
+} 
+
+static double median(double* data, size_t elements) {
+    if (elements % 2 == 1) {
+        return data[((elements + 1) / 2) - 1];
+    }
+    return (data[((elements + 1) / 2) - 1] + data[((elements + 1) / 2)]) / 2;
+}
+
+static double to_MBps(double n, size_t buffer_size, unsigned int buffer_copy) {
+    return( (buffer_size * buffer_copy) / n) / (1024*1024);
+}
 
 static void print_run(const char* program, const char* name, const char* restrict command, const char* restrict buffer, size_t buffer_size, unsigned int buffer_copy, unsigned int repeats) {
     double* results = calloc(repeats, sizeof(double));
     run(command, buffer, buffer_size, buffer_copy, repeats, results);
+    qsort(results, repeats, sizeof(double), compare_double);
+
     char* command_escaped = replace(command, '"', "\"\"");
     char* name_escaped = replace(name, '"', "\"\"");
     fprintf(stdout, "%s,\"%s\",\"%s\"", program, name_escaped, command_escaped);
-    for (unsigned int r = 0; r < repeats; r++) {
-        fprintf(stdout, ",%f", ( (buffer_size * buffer_copy) / results[r]) / (1024*1024) );
-    }
+    fprintf(stdout, ",%f,%f,%f", to_MBps(results[0], buffer_size, buffer_copy), to_MBps(results[repeats - 1], buffer_size, buffer_copy), to_MBps(median(results, repeats), buffer_size, buffer_copy));
     fprintf(stdout, "\n");
     free(command_escaped);
     free(name_escaped);
@@ -173,10 +187,7 @@ int main(int argc, char** argv) {
     fprintf(stderr, "Preparing data (%zd bytes)\n",bench_size);
     size_t data_filled = generate_csv(buffer, bench_size, seed1, seed2, columns);
     fprintf(stderr, "Data ready (%zd bytes)\n",data_filled);
-    fprintf(stdout, "program,name,command");
-    for (unsigned int r = 0; r < repeats; r++) {
-        fprintf(stdout, ",run%u", r);
-    }
+    fprintf(stdout, "program,name,command,min speed,max speed,median speed");
     fprintf(stdout, "\n");
 
 
