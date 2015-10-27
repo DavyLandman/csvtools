@@ -21,6 +21,8 @@ static void print_help() {
     fprintf(stderr, "\tseed for random generator\n");
     fprintf(stderr, "-x\n");
     fprintf(stderr, "\tonly run the csvtools (used for comparing new commits)\n");
+    fprintf(stderr, "-p\n");
+    fprintf(stderr, "\toutput the generated data to stdout\n");
 }
 
 static void run(const char* restrict command, const char* restrict buffer, size_t buffer_size, unsigned int buffer_copy, unsigned int repeats, double* results) {
@@ -158,9 +160,10 @@ int main(int argc, char** argv) {
     unsigned int seed1 = xxh_mix(29, 42);
     unsigned int seed2 = xxh_mix(13, 11);
     bool only_csvtools = false;
+    bool output_stdout = false;
 
     char c;
-    while ((c = getopt (argc, argv, "b:c:r:e:s:xh")) != -1) {
+    while ((c = getopt (argc, argv, "b:c:r:e:s:xph")) != -1) {
         switch (c) {
             case 'b':
                 sscanf(optarg, "%zd", &bench_size);
@@ -182,6 +185,9 @@ int main(int argc, char** argv) {
             case 'x':
                 only_csvtools = true;
                 break;
+            case 'p':
+                output_stdout = true;
+                break;
             case '?':
             case 'h':
             default:
@@ -194,6 +200,14 @@ int main(int argc, char** argv) {
     fprintf(stderr, "Preparing data (%zd bytes)\n",bench_size);
     size_t data_filled = generate_csv(buffer, bench_size, seed1, seed2, columns);
     fprintf(stderr, "Data ready (%zd bytes)\n",data_filled);
+    if (output_stdout) {
+        for (unsigned int b = 0; b < bench_copy; b++) {
+            fwrite(buffer, sizeof(char), data_filled, stdout);
+            fflush(stdout);
+        }
+        return 0;
+    }
+
     fprintf(stdout, "program,name,command,min speed,max speed,median speed");
     fprintf(stdout, "\n");
 
