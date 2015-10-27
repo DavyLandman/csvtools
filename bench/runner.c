@@ -99,7 +99,7 @@ static void print_run(const char* program, const char* name, const char* restric
 
 
 
-static void run_csvtools_grep(const char* restrict buffer, size_t buffer_size, unsigned int buffer_copy, unsigned int repeats, unsigned int columns) {
+static void csvgrep_csvtools(const char* restrict buffer, size_t buffer_size, unsigned int buffer_copy, unsigned int repeats, unsigned int columns) {
     fprintf(stderr, "Running csvtools csvgrep\n");
     print_run("csvtools csvgrep", "first column", "bin/csvgrep -p 'column1/[a-e]+/' > /dev/null", buffer, buffer_size, buffer_copy, repeats);
 
@@ -123,7 +123,7 @@ static void repeat(char* restrict target, const char* restrict val, const char s
     *target = '\0';
 }
 
-static void run_gnu_grep1(const char* restrict buffer, size_t buffer_size, unsigned int buffer_copy, unsigned int repeats, unsigned int columns) {
+static void csvgrep_gnugrep(const char* restrict buffer, size_t buffer_size, unsigned int buffer_copy, unsigned int repeats, unsigned int columns) {
     fprintf(stderr, "Running gnu grep\n");
 
     print_run("gnutools grep", "first column", "LC_ALL='C' grep \"^[^,a-e]*[a-e][a-e]*\" > /dev/null", buffer, buffer_size, buffer_copy, repeats);
@@ -219,9 +219,9 @@ int main(int argc, char** argv) {
         print_run("bench pipe", "md5sum", "md5sum > /dev/null", buffer, data_filled, bench_copy, repeats);
     }
 
-    run_csvtools_grep(buffer, data_filled, bench_copy, repeats, columns);
+    csvgrep_csvtools(buffer, data_filled, bench_copy, repeats, columns);
     if (!only_csvtools) {
-        run_gnu_grep1(buffer, data_filled, bench_copy, repeats, columns);
+        csvgrep_gnugrep(buffer, data_filled, bench_copy, repeats, columns);
     }
 
     return 0;
