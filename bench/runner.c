@@ -63,12 +63,12 @@ char *replace(const char *s, char ch, const char *repl) {
 }
 
 
-static void print_run(const char* name, const char* restrict command, const char* restrict buffer, size_t buffer_size, unsigned int buffer_copy, unsigned int repeats) {
+static void print_run(const char* program, const char* name, const char* restrict command, const char* restrict buffer, size_t buffer_size, unsigned int buffer_copy, unsigned int repeats) {
     double* results = calloc(repeats, sizeof(double));
     run(command, buffer, buffer_size, buffer_copy, repeats, results);
     char* command_escaped = replace(command, '"', "\"\"");
     char* name_escaped = replace(name, '"', "\"\"");
-    fprintf(stdout, "\"%s\",\"%s\"", name_escaped, command_escaped);
+    fprintf(stdout, "%s,\"%s\",\"%s\"", program, name_escaped, command_escaped);
     for (unsigned int r = 0; r < repeats; r++) {
         fprintf(stdout, ",%f", ( (buffer_size * buffer_copy) / results[r]) / (1024*1024) );
     }
@@ -76,6 +76,46 @@ static void print_run(const char* name, const char* restrict command, const char
     free(command_escaped);
     free(name_escaped);
     free(results);
+}
+
+
+
+static void run_csvtools_grep(const char* restrict buffer, size_t buffer_size, unsigned int buffer_copy, unsigned int repeats, unsigned int columns) {
+    fprintf(stderr, "Running csvtools csvgrep\n");
+    print_run("csvtools csvgrep", "first column", "bin/csvgrep -p 'column1/[a-e]+/' > /dev/null", buffer, buffer_size, buffer_copy, repeats);
+
+    char command[255];
+    sprintf(command, "bin/csvgrep -p 'column%u/[a-e]+/' > /dev/null", columns / 2);
+    print_run("csvtools csvgrep", "middle column", command, buffer, buffer_size, buffer_copy, repeats);
+
+    sprintf(command, "bin/csvgrep -p 'column%u/[a-e]+/' > /dev/null", columns);
+    print_run("csvtools csvgrep", "last column", command , buffer, buffer_size, buffer_copy, repeats);
+}
+
+static void repeat(char* restrict target, const char* restrict val, const char separator, size_t repeats) {
+    size_t val_length = strlen(val);
+    for (unsigned int r = 0; r < repeats; r++) {
+        if (r > 0) {
+            *target++ = separator;
+        }
+        memcpy(target, val, val_length);
+        target += val_length;
+    }
+    *target = '\0';
+}
+
+static void run_gnu_grep1(const char* restrict buffer, size_t buffer_size, unsigned int buffer_copy, unsigned int repeats, unsigned int columns) {
+    fprintf(stderr, "Running gnu grep\n");
+
+    print_run("gnutools grep", "first column", "LC_ALL='C' grep \"^[^,a-e]*[a-e][a-e]*\" > /dev/null", buffer, buffer_size, buffer_copy, repeats);
+
+    char skip_commands[1024];
+    repeat(skip_commands, "[^,]*", ',', columns / 2);
+    char command[255];
+    sprintf(command, "LC_ALL='C' grep \"^%s,[^,a-e]*[a-e][a-e]*\" > /dev/null", skip_commands);
+    print_run("gnutools grep", "middle column", command, buffer, buffer_size, buffer_copy, repeats);
+
+    print_run("gnutools grep", "last column", "LC_ALL='C' grep \"[a-e][a-e]*[^,a-e]*$\" > /dev/null", buffer, buffer_size, buffer_copy, repeats);
 }
 
 // based on xxhash avalanche
@@ -94,7 +134,7 @@ static unsigned int xxh_mix(unsigned int x, unsigned int seed) {
 }
 
 int main(int argc, char** argv) {
-    size_t bench_size = 200 * 1024 * 1024; 
+    size_t bench_size = 200 * 1024 * 1024;
     unsigned int columns = 6;
     unsigned int repeats = 5;
     unsigned int bench_copy = 2;
@@ -130,21 +170,22 @@ int main(int argc, char** argv) {
         }
     }
     char* buffer = calloc(bench_size, sizeof(char));
-    fprintf(stderr, "Preparing data (%zd bytes)\n",bench_size); 
+    fprintf(stderr, "Preparing data (%zd bytes)\n",bench_size);
     size_t data_filled = generate_csv(buffer, bench_size, seed1, seed2, columns);
-    fprintf(stderr, "Data ready (%zd bytes)\n",data_filled); 
-    fprintf(stdout, "name,command");
+    fprintf(stderr, "Data ready (%zd bytes)\n",data_filled);
+    fprintf(stdout, "program,name,command");
     for (unsigned int r = 0; r < repeats; r++) {
         fprintf(stdout, ",run%u", r);
     }
     fprintf(stdout, "\n");
-    fprintf(stderr, "Running csvgrep\n");
-    char command[255];
-    print_run("csvgrep 1st column", "bin/csvgrep -p 'column1/[a-e]+/' > /dev/null", buffer, data_filled, bench_copy, repeats);
-    sprintf(command, "bin/csvgrep -p 'column%u/[a-e]+/' > /dev/null", columns / 2);
-    print_run("csvgrep middle column", command, buffer, data_filled, bench_copy, repeats);
-    sprintf(command, "bin/csvgrep -p 'column%u/[a-e]+/' > /dev/null", columns);
-    print_run("csvgrep end column", command , buffer, data_filled, bench_copy, repeats);
-    
+
+
+    fprintf(stderr, "Running pipe bench fist\n");
+    print_run("bench pipe", "cat", "cat > /dev/null", buffer, data_filled, bench_copy, repeats);
+    print_run("bench pipe", "wc -l",  "wc -l > /dev/null", buffer, data_filled, bench_copy, repeats);
+    print_run("bench pipe", "md5sum", "md5sum > /dev/null", buffer, data_filled, bench_copy, repeats);
+    run_csvtools_grep(buffer, data_filled, bench_copy, repeats, columns);
+    run_gnu_grep1(buffer, data_filled, bench_copy, repeats, columns);
+
     return 0;
 }
