@@ -98,6 +98,29 @@ static void print_run(const char* program, const char* name, const char* restric
 }
 
 
+static void csvgrep_csvkit(const char* restrict buffer, size_t buffer_size, unsigned int buffer_copy, unsigned int repeats, unsigned int columns) {
+    fprintf(stderr, "Running csvkit csvgrep\n");
+    print_run("csvkit csvgrep", "first column", "csvgrep -c column1 -r '.*[a-e]+.*' > /dev/null", buffer, buffer_size, 1, repeats);
+
+    char command[255];
+    sprintf(command, "csvgrep -c column%u -r '.*[a-e]+.*' > /dev/null", columns / 2);
+    print_run("csvkit csvgrep", "middle column", command, buffer, buffer_size, 1, repeats);
+
+    sprintf(command, "csvgrep -c column%u -r '.*[a-e]+.*' > /dev/null", columns);
+    print_run("csvkit csvgrep", "last column", command , buffer, buffer_size, buffer_copy, repeats);
+}
+
+static void csvgrep_awk(const char* restrict buffer, size_t buffer_size, unsigned int buffer_copy, unsigned int repeats, unsigned int columns) {
+    fprintf(stderr, "Running awk grep\n");
+    print_run("awk grep", "first column", "LC_ALL='C' awk -F\",\" '$1 ~ /.*[a-e]+.*/ { print }' > /dev/null", buffer, buffer_size, 1, repeats);
+
+    char command[255];
+    sprintf(command, "LC_ALL='C' awk -F\",\" '$%u ~ /.*[a-e]+.*/ { print }' > /dev/null", columns / 2);
+    print_run("awk grep", "middle column", command, buffer, buffer_size, 1, repeats);
+
+    sprintf(command, "LC_ALL='C' awk -F\",\" '$%u ~ /.*[a-e]+.*/ { print }' > /dev/null", columns);
+    print_run("awk grep", "last column", command , buffer, buffer_size, buffer_copy, repeats);
+}
 
 static void csvgrep_csvtools(const char* restrict buffer, size_t buffer_size, unsigned int buffer_copy, unsigned int repeats, unsigned int columns) {
     fprintf(stderr, "Running csvtools csvgrep\n");
@@ -221,6 +244,8 @@ int main(int argc, char** argv) {
 
     csvgrep_csvtools(buffer, data_filled, bench_copy, repeats, columns);
     if (!only_csvtools) {
+        csvgrep_csvkit(buffer, data_filled, bench_copy, repeats, columns);
+        csvgrep_awk(buffer, data_filled, bench_copy, repeats, columns);
         csvgrep_gnugrep(buffer, data_filled, bench_copy, repeats, columns);
     }
 
