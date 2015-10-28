@@ -208,7 +208,7 @@ static void parse_config(int argc, char** argv) {
 
 bool str_contains_n(size_t amount, const char** strings, const char* needle, size_t needle_size) {
     for (size_t i = 0; i < amount; i++) {
-        if (strncmp(strings[i], needle, needle_size) == 0) {
+        if (strlen(strings[i]) == needle_size && strncmp(strings[i], needle, needle_size) == 0) {
             return true;
         }
     }
