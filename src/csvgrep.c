@@ -191,16 +191,24 @@ static void parse_config(int argc, char** argv) {
                 config.or = true;
                 break;
             case 'p':
+                LOG_V("Got pattern: %s\n", optarg);
+                char* column_name = strtok(optarg, "/"); 
+                char* column_pattern = strtok(NULL, "/");
+                for (size_t pat = 0;  pat < half_config.n_patterns; pat++) {
+                    if (strcasecmp(column_name, half_config.columns[pat]) == 0) {
+                        fprintf(stderr, "You can only define one pattern per column (column: %s)\n", column_name);
+                        exit(1);
+                    }
+                }
                 half_config.n_patterns++;
                 if (half_config.n_patterns >= 1) {
                     half_config.columns = realloc(half_config.columns, sizeof(char*) * half_config.n_patterns);
                     half_config.patterns = realloc(half_config.patterns, sizeof(char*) * half_config.n_patterns);
                     half_config.column_lengths = realloc(half_config.column_lengths, sizeof(size_t) * half_config.n_patterns);
                 }
-                LOG_V("Got pattern: %s\n", optarg);
-                half_config.columns[half_config.n_patterns - 1] = strtok(optarg, "/");
-                half_config.patterns[half_config.n_patterns - 1] = strtok(NULL, "/");
-                half_config.column_lengths[half_config.n_patterns - 1] = strlen(half_config.columns[half_config.n_patterns - 1]);
+                half_config.columns[half_config.n_patterns - 1] = column_name;
+                half_config.patterns[half_config.n_patterns - 1] = column_pattern;
+                half_config.column_lengths[half_config.n_patterns - 1] = strlen(column_name);
                 break;
             case '?':
             case 'h':
@@ -262,7 +270,7 @@ static size_t finish_config(size_t cells_found) {
     for (int c = 0; c < config.column_count; c++) {
         for (size_t pat = 0;  pat < half_config.n_patterns; pat++) {
             if (!used[pat] && _cells[c].length == half_config.column_lengths[pat]) {
-                if (strncmp(_cells[c].start, half_config.columns[pat], half_config.column_lengths[pat])==0) {
+                if (strncasecmp(_cells[c].start, half_config.columns[pat], half_config.column_lengths[pat])==0) {
                     used[pat] = true;
                     LOG_V("Adding pattern %s for column: %s (%d)\n", half_config.patterns[pat], half_config.columns[pat],c);
                     // we have found the column
