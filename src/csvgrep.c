@@ -48,6 +48,7 @@ static struct {
 
 static long long _count;
 
+static char const * unquote(char const* restrict quoted, size_t* restrict length);
 static void parse_config(int argc, char** argv);
 static size_t finish_config(size_t cells_found);
 
@@ -268,9 +269,16 @@ static size_t finish_config(size_t cells_found) {
     config.patterns = calloc(sizeof(Regex),config.column_count);
     memset(config.patterns, 0, sizeof(Regex) * config.column_count);
     for (int c = 0; c < config.column_count; c++) {
+        const char* column = _cells[c].start;
+        size_t length = _cells[c].length;
+        if (*column == '"') {
+            column++;
+            length -= 2;
+            column = unquote(column, &length);
+        }
         for (size_t pat = 0;  pat < half_config.n_patterns; pat++) {
-            if (!used[pat] && _cells[c].length == half_config.column_lengths[pat]) {
-                if (strncasecmp(_cells[c].start, half_config.columns[pat], half_config.column_lengths[pat])==0) {
+            if (!used[pat] && length == half_config.column_lengths[pat]) {
+                if (strncasecmp(column, half_config.columns[pat], half_config.column_lengths[pat])==0) {
                     used[pat] = true;
                     LOG_V("Adding pattern %s for column: %s (%d)\n", half_config.patterns[pat], half_config.columns[pat],c);
                     // we have found the column
@@ -312,7 +320,6 @@ static size_t finish_config(size_t cells_found) {
     return config.column_count + 1 ;
 }
 
-static char const * unquote(char const* restrict quoted, size_t* restrict length);
 
 // data for around the edges
 static char _prev_line[BUFFER_SIZE * 2];

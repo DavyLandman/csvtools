@@ -118,6 +118,8 @@ static void print_help() {
     fprintf(stderr, "\tWhich columns to keep\n");
     fprintf(stderr, "-D 0,1,3\n");
     fprintf(stderr, "\tWhich columns to drop\n");
+    fprintf(stderr, "-e\n");
+    fprintf(stderr, "\tProvide column names one at a time, useful in case of embedded commas.\n");
 }
 
 enum column_kind {
@@ -143,9 +145,13 @@ static void parse_config(int argc, char** argv) {
     preconfig.cuts_defined = 0;
     preconfig.cuts = NULL;
 
+    bool one_at_a_time =  false;
     char c;
-    while ((c = getopt (argc, argv, "s:k:d:K:D:h")) != -1) {
+    while ((c = getopt (argc, argv, "s:k:d:K:D:eh")) != -1) {
         switch (c) {
+            case 'e':
+                one_at_a_time = true;
+                break;
             case 's': 
                 config.separator = optarg[0];
                 break;
@@ -153,29 +159,62 @@ static void parse_config(int argc, char** argv) {
             case 'd':
             case 'K':
             case 'D':
-                if (preconfig.kind != NONE) {
-                    fprintf(stderr, "Error, you can only pass one kind of cut option.\n");
-                    exit(1);
+                if (!one_at_a_time) {
+                    if (preconfig.kind != NONE) {
+                        fprintf(stderr, "Error, you can only pass one kind of cut option.\n");
+                        exit(1);
+                    }
+                    preconfig.cuts = malloc(sizeof(char*));
+                    preconfig.cuts_defined = 1;
+                    preconfig.cuts[0] = strtok(optarg, ",");
+                    char* next_column;
+                    while ((next_column = strtok(NULL, ",")) != NULL) {
+                        preconfig.cuts_defined++;
+                        preconfig.cuts = realloc(preconfig.cuts, sizeof(char*) * preconfig.cuts_defined);
+                        preconfig.cuts[preconfig.cuts_defined - 1] = next_column;
+                    }
                 }
-                preconfig.cuts = malloc(sizeof(char*));
-                preconfig.cuts_defined = 1;
-                preconfig.cuts[0] = strtok(optarg, ",");
-                char* next_column;
-                while ((next_column = strtok(NULL, ",")) != NULL) {
-                    preconfig.cuts_defined++;
-                    preconfig.cuts = realloc(preconfig.cuts, sizeof(char*) * preconfig.cuts_defined);
-                    preconfig.cuts[preconfig.cuts_defined - 1] = next_column;
+                else {
+                    if (!preconfig.cuts) {
+                        preconfig.cuts = malloc(sizeof(char*));
+                        preconfig.cuts_defined = 1;
+                    }
+                    else {
+                        preconfig.cuts_defined++;
+                        preconfig.cuts = realloc(preconfig.cuts, sizeof(char*) * preconfig.cuts_defined);
+                    }
+                    preconfig.cuts[preconfig.cuts_defined - 1] = optarg;
                 }
                 if (c == 'k') {
+                    if (preconfig.kind != NONE && preconfig.kind != KEEP_NAMES) {
+                        fprintf(stderr, "You can only choose one mode of dropping/keeping columns\n");
+                        print_help();
+                        exit(1);
+                    }
                     preconfig.kind = KEEP_NAMES;
                 }
                 else if (c == 'd') {
+                    if (preconfig.kind != NONE && preconfig.kind != DROP_NAMES) {
+                        fprintf(stderr, "You can only choose one mode of dropping/keeping columns\n");
+                        print_help();
+                        exit(1);
+                    }
                     preconfig.kind = DROP_NAMES;
                 }
                 else if (c == 'K') {
+                    if (preconfig.kind != NONE && preconfig.kind != KEEP_INDEXES) {
+                        fprintf(stderr, "You can only choose one mode of dropping/keeping columns\n");
+                        print_help();
+                        exit(1);
+                    }
                     preconfig.kind = KEEP_INDEXES;
                 }
                 else if (c == 'D') {
+                    if (preconfig.kind != NONE && preconfig.kind != DROP_INDEXES) {
+                        fprintf(stderr, "You can only choose one mode of dropping/keeping columns\n");
+                        print_help();
+                        exit(1);
+                    }
                     preconfig.kind = DROP_INDEXES;
                 }
                 break;
@@ -206,7 +245,28 @@ static void parse_config(int argc, char** argv) {
     _tokenizer = setup_tokenizer(config.separator, _buffer, _cells,CELL_BUFFER_SIZE);
 }
 
+static char _unquote_buffer[BUFFER_SIZE];
+static char const * unquote(char const* restrict quoted, size_t* restrict length) {
+    char * restrict result = _unquote_buffer;
+    char const * restrict current_char = quoted; 
+    char const * restrict char_end = quoted + *length; 
+    while (current_char < char_end) {
+        if (*current_char == '"') {
+            // must be an escaped "
+            current_char++;
+            (*length)--;
+        }
+        *result++ = *current_char++;
+    }
+    return _unquote_buffer;
+}
+
 bool str_contains_n(size_t amount, const char** strings, const char* needle, size_t needle_size) {
+    if (*needle == '"') {
+        needle++;
+        needle_size -= 2;
+        needle = unquote(needle, &needle_size);
+    }
     for (size_t i = 0; i < amount; i++) {
         if (strlen(strings[i]) == needle_size && strncasecmp(strings[i], needle, needle_size) == 0) {
             return true;
