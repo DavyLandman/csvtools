@@ -1,1 +1,1 @@
--d aaa
+ARGS=(-d aaa)

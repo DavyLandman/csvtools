@@ -1,1 +1,1 @@
--p Topic/[A-Z][a-e]/
+ARGS=(-p Topic/[A-Z][a-e]/)

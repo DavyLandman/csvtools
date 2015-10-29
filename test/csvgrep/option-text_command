@@ -1,1 +1,1 @@
--p column1/(foo|bar)/
+ARGS=(-p 'column1/(foo|bar)/')

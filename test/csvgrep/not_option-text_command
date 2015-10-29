@@ -1,1 +1,1 @@
--v -p column3/(foo|bar)/
+ARGS=(-v -p "column3/(foo|bar)/")
