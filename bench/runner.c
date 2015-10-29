@@ -100,13 +100,13 @@ static void print_run(const char* program, const char* name, const char* restric
 
 static void csvgrep_csvkit(const char* restrict buffer, size_t buffer_size, unsigned int buffer_copy, unsigned int repeats, unsigned int columns) {
     fprintf(stderr, "Running csvkit csvgrep\n");
-    print_run("csvkit csvgrep", "first column", "csvgrep -c column1 -r '.*[a-e]+.*' > /dev/null", buffer, buffer_size, 1, repeats);
+    print_run("csvkit csvgrep", "first column", "python bench/csvkit-csvgrep.py -c column1 -r '.*[a-e]+.*' > /dev/null", buffer, buffer_size, 1, repeats);
 
     char command[255];
-    sprintf(command, "csvgrep -c column%u -r '.*[a-e]+.*' > /dev/null", columns / 2);
+    sprintf(command, "python bench/csvkit-csvgrep.py -c column%u -r '.*[a-e]+.*' > /dev/null", columns / 2);
     print_run("csvkit csvgrep", "middle column", command, buffer, buffer_size, 1, repeats);
 
-    sprintf(command, "csvgrep -c column%u -r '.*[a-e]+.*' > /dev/null", columns);
+    sprintf(command, "python bench/csvkit-csvgrep.py -c column%u -r '.*[a-e]+.*' > /dev/null", columns);
     print_run("csvkit csvgrep", "last column", command , buffer, buffer_size, buffer_copy, repeats);
 }
 
