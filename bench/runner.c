@@ -108,6 +108,9 @@ static void csvgrep_csvkit(const char* restrict buffer, size_t buffer_size, unsi
 
     sprintf(command, "python bench/csvkit-csvgrep.py -c column%u -r '.*[a-e]+.*' > /dev/null", columns);
     print_run("csvkit csvgrep", "last column", command , buffer, buffer_size, buffer_copy, repeats);
+
+    sprintf(command, "python bench/csvkit-csvgrep.py -c column%u,column%u -r '.*[a-e]+.*' > /dev/null", columns / 2, columns - 1);
+    print_run("csvkit csvgrep", "two columns", command , buffer, buffer_size, buffer_copy, repeats);
 }
 
 static void csvgrep_awk(const char* restrict buffer, size_t buffer_size, unsigned int buffer_copy, unsigned int repeats, unsigned int columns) {
@@ -120,6 +123,9 @@ static void csvgrep_awk(const char* restrict buffer, size_t buffer_size, unsigne
 
     sprintf(command, "LC_ALL='C' awk -F\",\" '$%u ~ /.*[a-e]+.*/ { print }' > /dev/null", columns);
     print_run("awk grep", "last column", command , buffer, buffer_size, buffer_copy, repeats);
+
+    sprintf(command, "LC_ALL='C' awk -F\",\" '$%u ~ /.*[a-e]+.*/ && $%u ~ /.*[F-L]+.*/ { print }' > /dev/null", columns / 2, columns - 1);
+    print_run("awk grep", "two columns", command , buffer, buffer_size, buffer_copy, repeats);
 }
 
 static void csvgrep_csvtools(const char* restrict buffer, size_t buffer_size, unsigned int buffer_copy, unsigned int repeats, unsigned int columns) {
@@ -132,6 +138,9 @@ static void csvgrep_csvtools(const char* restrict buffer, size_t buffer_size, un
 
     sprintf(command, "bin/csvgrep -p 'column%u/[a-e]+/' > /dev/null", columns);
     print_run("csvtools csvgrep", "last column", command , buffer, buffer_size, buffer_copy, repeats);
+
+    sprintf(command, "bin/csvgrep -p 'column%u/[a-e]+/' -p 'column%u/[F-L]+/' > /dev/null", columns / 2 , columns - 1);
+    print_run("csvtools csvgrep", "two columns", command , buffer, buffer_size, buffer_copy, repeats);
 }
 
 static void repeat(char* restrict target, const char* restrict val, const char separator, size_t repeats) {
@@ -158,6 +167,11 @@ static void csvgrep_gnugrep(const char* restrict buffer, size_t buffer_size, uns
     print_run("gnutools grep", "middle column", command, buffer, buffer_size, buffer_copy, repeats);
 
     print_run("gnutools grep", "last column", "LC_ALL='C' grep \"[a-e][a-e]*[^,a-e]*$\" > /dev/null", buffer, buffer_size, buffer_copy, repeats);
+
+    char skip_commands2[1024];
+    repeat(skip_commands2, "[^,]*", ',', (columns - 1) - (columns / 2));
+    sprintf(command, "LC_ALL='C' grep \"^%s,[^,a-e]*[a-e][a-e]*[^,]*,%s,[^,F-L][F-L][F-L]*\" > /dev/null", skip_commands, skip_commands2);
+    print_run("gnutools grep", "two columns", command , buffer, buffer_size, buffer_copy, repeats);
 }
 
 // based on xxhash avalanche
