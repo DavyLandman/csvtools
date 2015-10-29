@@ -1,1 +1,1 @@
--p Characteristic/201[0-2]/
+ARGS=(-p Characteristic/201[0-2]/)

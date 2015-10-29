@@ -4,57 +4,59 @@ LARGE_FILES=$2
 RESULT=0
 
 test_normal() {
-	REF=$(cat "$4")
-	OUTPUT=$(../bin/$2 $3 < "$1")
+    REF_FILE=$OUTPUT
+	REF=$(cat "$OUTPUT")
+    OUTPUT=$("../bin/$PROGRAM" "${ARGS[@]}" < "$INPUT")
 	if (($? > 0)); then
-		printf "\t- $1 params: \"$3\" =\t Failed ($2 crashed)\n"
+        printf "\t- %s params: \"%s\" = \t Failed (%s crashed)\n" "$INPUT" "${ARGS[*]}" "$PROGRAM"
 		RESULT=1
 		return
 	fi
 
 
 	if [ "$OUTPUT" != "$REF" ]; then
-		printf "\t- $1 params: \"$3\" =\t Failed\n"
+        printf "\t- %s params: \"%s\" = \t Failed\n" "$INPUT" "${ARGS[*]}"
 		printf "$OUTPUT" > /tmp/error-output.csv
-		diff -a -d "$4" /tmp/error-output.csv
+        diff -a -d "$REF_FILE" /tmp/error-output.csv
 		rm /tmp/error-output.csv
 		printf ""
 		RESULT=1
 	else
-		printf  "\t- $1 params: \"$3\" =\t OK\n"
+        printf "\t- %s params: \"%s\" = \t OK\n" "$INPUT" "${ARGS[*]}" 
 	fi
 }
 
 test_xz() {
-	REF=$(xzcat "$4" | md5sum)
-	OUTPUT=$(xzcat "$1" | ../bin/$2 $3 | md5sum)
+	REF=$(xzcat "$OUTPUT" | md5sum)
+	OUTPUT=$(xzcat "$INPUT" | "../bin/$PROGRAM" "${ARGS[@]}" | md5sum)
 	if (($? > 0)); then
-		printf "\t- $1 params: \"$3\" =\t Failed ($2 crashed)\n"
+        printf "\t- %s params: \"%s\" = \t Failed (%s crashed)\n" "$INPUT" "${ARGS[*]}" "$PROGRAM"
 		RESULT=1
 		return
 	fi
 
 
 	if [ "$OUTPUT" != "$REF" ]; then
-		printf "\t- $1 params: \"$3\" =\t Failed\n"
+        printf "\t- %s params: \"%s\" = \t Failed\n" "$INPUT" "${ARGS[*]}"
 		RESULT=1
 	else
-		printf "\t- $1 params: \"$3\" =\t OK\n"
+        printf "\t- %s params: \"%s\" = \t OK\n" "$INPUT" "${ARGS[*]}" 
 	fi
 }
 printf "Testing $PROGRAM"
 for INPUT in $PROGRAM/*_input.csv*;
 do
-	ARGS=$(cat "$(printf $INPUT | sed 's/input\.csv.*$/command/')")
+    source "$(printf $INPUT | sed 's/input\.csv.*$/command/')"
+	#ARGS=$(cat "$(printf $INPUT | sed 's/input\.csv.*$/command/')")
 	OUTPUT=$(printf $INPUT | sed 's/input/output/')
 	case $INPUT in
 		*.csv.xz )
 			if (($LARGE_FILES == 1)); then
-				test_xz "$INPUT" "$PROGRAM" "$ARGS" "$OUTPUT"
+				test_xz
 			fi
 		;;
 		*.csv )
-			test_normal "$INPUT" "$PROGRAM" "$ARGS" "$OUTPUT"
+			test_normal
 		;;
 	esac
 done

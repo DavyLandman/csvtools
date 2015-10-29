@@ -1,1 +1,1 @@
--k column1
+ARGS=(-k column1)
