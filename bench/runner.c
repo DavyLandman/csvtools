@@ -386,8 +386,6 @@ int main(int argc, char** argv) {
     fprintf(stdout, "program,name,command,min speed,max speed,median speed");
     fprintf(stdout, "\n");
 
-        csvcut_gnucut(buffer, data_filled, bench_copy, repeats, columns);
-
     fprintf(stderr, "Running pipe bench fist\n");
     if (!only_csvtools) {
         print_run("bench pipe", "cat", "cat > /dev/null", buffer, data_filled, bench_copy, repeats);
