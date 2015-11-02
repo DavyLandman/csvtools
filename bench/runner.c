@@ -174,6 +174,130 @@ static void csvgrep_gnugrep(const char* restrict buffer, size_t buffer_size, uns
     print_run("gnutools grep", "two columns", command , buffer, buffer_size, buffer_copy, repeats);
 }
 
+
+static void csvcut_csvtools(const char* restrict buffer, size_t buffer_size, unsigned int buffer_copy, unsigned int repeats, unsigned int columns) {
+    fprintf(stderr, "Running csvtools csvcut\n");
+    print_run("csvtools csvcut", "first column", "bin/csvcut -d column1 > /dev/null", buffer, buffer_size, buffer_copy, repeats);
+
+    char command[255];
+    sprintf(command, "bin/csvcut -d column%u > /dev/null", columns / 2);
+    print_run("csvtools csvcut", "middle column", command, buffer, buffer_size, buffer_copy, repeats);
+
+    sprintf(command, "bin/csvcut -d column%u > /dev/null", columns);
+    print_run("csvtools csvcut", "last column", command, buffer, buffer_size, buffer_copy, repeats);
+
+    sprintf(command, "bin/csvcut -d column%u,column%u > /dev/null", columns - 3,columns - 2);
+    print_run("csvtools csvcut", "two adjoining column", command, buffer, buffer_size, buffer_copy, repeats);
+
+    sprintf(command, "bin/csvcut -d column%u,column%u > /dev/null", columns / 2,columns - 1);
+    print_run("csvtools csvcut", "two distinct column", command, buffer, buffer_size, buffer_copy, repeats);
+}
+
+static void csvcut_csvkit(const char* restrict buffer, size_t buffer_size, unsigned int buffer_copy, unsigned int repeats, unsigned int columns) {
+    fprintf(stderr, "Running csvkit csvcut\n");
+    print_run("csvkit csvcut", "first column", "python bench/csvkit-csvcut.py -c column1 > /dev/null", buffer, buffer_size, 1, repeats);
+
+    char command[255];
+    sprintf(command, "python bench/csvkit-csvcut.py -c column%u > /dev/null", columns / 2);
+    print_run("csvkit csvcut", "middle column", command, buffer, buffer_size, 1, repeats);
+
+    sprintf(command, "python bench/csvkit-csvcut.py -c column%u > /dev/null", columns);
+    print_run("csvkit csvcut", "last column", command, buffer, buffer_size, 1, repeats);
+
+    sprintf(command, "python bench/csvkit-csvcut.py -c column%u,column%u > /dev/null", columns - 3,columns - 2);
+    print_run("csvkit csvcut", "two adjoining column", command, buffer, buffer_size, buffer_copy, repeats);
+
+    sprintf(command, "python bench/csvkit-csvcut.py -c column%u,column%u > /dev/null", columns / 2,columns - 1);
+    print_run("csvkit csvcut", "two distinct column", command, buffer, buffer_size, buffer_copy, repeats);
+}
+
+static void csvcut_gnucut(const char* restrict buffer, size_t buffer_size, unsigned int buffer_copy, unsigned int repeats, unsigned int columns) {
+    fprintf(stderr, "Running gnu cut\n");
+
+    char args[255];
+    args[0] = '\0';
+    size_t written = 0;
+    for (unsigned int col = 2; col <= columns; col++) {
+        sprintf(args + written, "%u", col);
+        written = strlen(args);
+        args[written++] = ',';
+    }
+    args[written - 1] = '\0';
+
+    char command[255];
+    sprintf(command, "cut -d ',' -f %s > /dev/null", args);
+    print_run("cut csvcut", "first column", command, buffer, buffer_size, 1, repeats);
+
+    args[0] = '\0';
+    written = 0;
+    for (unsigned int col = 1; col <= columns; col++) {
+        if (col != columns / 2) {
+            sprintf(args + written, "%u", col);
+            written = strlen(args);
+            args[written++] = ',';
+        }
+    }
+    args[written - 1] = '\0';
+    sprintf(command, "cut -d ',' -f %s > /dev/null", args);
+    print_run("cut csvcut", "middle column", command, buffer, buffer_size, 1, repeats);
+
+    args[0] = '\0';
+    written = 0;
+    for (unsigned int col = 1; col <= columns - 1; col++) {
+        sprintf(args + written, "%u", col);
+        written = strlen(args);
+        args[written++] = ',';
+    }
+    args[written - 1] = '\0';
+    sprintf(command, "cut -d ',' -f %s > /dev/null", args);
+    print_run("cut csvcut", "last column", command, buffer, buffer_size, 1, repeats);
+
+    args[0] = '\0';
+    written = 0;
+    for (unsigned int col = 1; col <= columns; col++) {
+        if (col == columns - 3 || col == columns - 2) {
+            sprintf(args + written, "%u", col + 1);
+            written = strlen(args);
+            args[written++] = ',';
+        }
+    }
+    args[written - 1] = '\0';
+    sprintf(command, "cut -d ',' -f %s > /dev/null", args);
+    print_run("cut csvcut", "two adjoining column", command, buffer, buffer_size, buffer_copy, repeats);
+
+    args[0] = '\0';
+    written = 0;
+    for (unsigned int col = 1; col <= columns; col++) {
+        if (col == columns / 2 || col == columns - 1) {
+            sprintf(args + written, "%u", col + 1);
+            written = strlen(args);
+            args[written++] = ',';
+        }
+    }
+    args[written - 1] = '\0';
+    sprintf(command, "cut -d ',' -f %s > /dev/null", args);
+    print_run("cut csvcut", "two distinct column", command, buffer, buffer_size, buffer_copy, repeats);
+}
+
+static void csvcut_sed(const char* restrict buffer, size_t buffer_size, unsigned int buffer_copy, unsigned int repeats, unsigned int columns) {
+    fprintf(stderr, "Running gnu sed\n");
+
+    print_run("sed csvcut", "first column", "LC_ALL='C' sed 's/^[^,]*,//' > /dev/null", buffer, buffer_size, buffer_copy, repeats);
+
+    char command[255];
+    sprintf(command, "LC_ALL='C' sed 's/[^,]*,//%u' > /dev/null", columns / 2);
+    print_run("sed csvcut", "middle column", command, buffer, buffer_size, buffer_copy, repeats);
+
+    sprintf(command, "LC_ALL='C' sed 's/[^,]*,//%u' > /dev/null", columns - 1);
+    print_run("sed csvcut", "last column", command, buffer, buffer_size, buffer_copy, repeats);
+
+    sprintf(command, "LC_ALL='C' sed -e 's/[^,]*,//%u' -e 's/[^,]*,//%u' > /dev/null", columns - 2, columns - 3 );
+    print_run("sed csvcut", "two adjoining column", command, buffer, buffer_size, buffer_copy, repeats);
+
+    sprintf(command, "LC_ALL='C' sed -e 's/[^,]*,//%u' -e 's/[^,]*,//%u' > /dev/null", columns - 1, columns / 2);
+    print_run("sed csvcut", "two distinct column", command, buffer, buffer_size, buffer_copy, repeats);
+
+}
 // based on xxhash avalanche
 #define PRIME1   2654435761U
 #define PRIME2   2246822519U
@@ -262,6 +386,14 @@ int main(int argc, char** argv) {
         csvgrep_awk(buffer, data_filled, bench_copy, repeats, columns);
         csvgrep_gnugrep(buffer, data_filled, bench_copy, repeats, columns);
     }
+
+    csvcut_csvtools(buffer, data_filled, bench_copy, repeats, columns);
+    if (!only_csvtools) {
+        csvcut_csvkit(buffer, data_filled, bench_copy, repeats, columns);
+        csvcut_gnucut(buffer, data_filled, bench_copy, repeats, columns);
+        csvcut_sed(buffer, data_filled, bench_copy, repeats, columns);
+    }
+
 
     return 0;
 }
