@@ -329,7 +329,7 @@ int main(int argc, char** argv) {
     while ((c = getopt (argc, argv, "b:c:r:e:s:xph")) != -1) {
         switch (c) {
             case 'b':
-                sscanf(optarg, "%zd", &bench_size);
+                sscanf(optarg, "%zu", &bench_size);
                 bench_size *= 1024 * 1024;
                 break;
             case 'c':
@@ -360,9 +360,9 @@ int main(int argc, char** argv) {
         }
     }
     char* buffer = calloc(bench_size, sizeof(char));
-    fprintf(stderr, "Preparing data (%zd bytes)\n",bench_size);
+    fprintf(stderr, "Preparing data (%zu bytes)\n",bench_size);
     size_t data_filled = generate_csv(buffer, bench_size, seed1, seed2, columns);
-    fprintf(stderr, "Data ready (%zd bytes)\n",data_filled);
+    fprintf(stderr, "Data ready (%zu bytes)\n",data_filled);
     if (output_stdout) {
         for (unsigned int b = 0; b < bench_copy; b++) {
             fwrite(buffer, sizeof(char), data_filled, stdout);
