@@ -99,6 +99,7 @@ static void print_run(const char* program, const char* name, const char* restric
 
 
 static void csvgrep_csvkit(const char* restrict buffer, size_t buffer_size, unsigned int buffer_copy, unsigned int repeats, unsigned int columns) {
+    (void)buffer_copy; // not used
     fprintf(stderr, "Running csvkit csvgrep\n");
     print_run("csvkit csvgrep", "first column", "python bench/csvkit-csvgrep.py -c column1 -r '.*[a-e]+.*' > /dev/null", buffer, buffer_size, 1, repeats);
 
@@ -194,6 +195,7 @@ static void csvcut_csvtools(const char* restrict buffer, size_t buffer_size, uns
 }
 
 static void csvcut_csvkit(const char* restrict buffer, size_t buffer_size, unsigned int buffer_copy, unsigned int repeats, unsigned int columns) {
+    (void)buffer_copy; // not used
     fprintf(stderr, "Running csvkit csvcut\n");
     print_run("csvkit csvcut", "first column", "python bench/csvkit-csvcut.py -c column1 > /dev/null", buffer, buffer_size, 1, repeats);
 
