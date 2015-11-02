@@ -107,10 +107,10 @@ static void csvgrep_csvkit(const char* restrict buffer, size_t buffer_size, unsi
     print_run("csvkit csvgrep", "middle column", command, buffer, buffer_size, 1, repeats);
 
     sprintf(command, "python bench/csvkit-csvgrep.py -c column%u -r '.*[a-e]+.*' > /dev/null", columns);
-    print_run("csvkit csvgrep", "last column", command , buffer, buffer_size, buffer_copy, repeats);
+    print_run("csvkit csvgrep", "last column", command , buffer, buffer_size, 1, repeats);
 
     sprintf(command, "python bench/csvkit-csvgrep.py -c column%u,column%u -r '.*[a-e]+.*' > /dev/null", columns / 2, columns - 1);
-    print_run("csvkit csvgrep", "two columns", command , buffer, buffer_size, buffer_copy, repeats);
+    print_run("csvkit csvgrep", "two columns", command , buffer, buffer_size, 1, repeats);
 }
 
 static void csvgrep_awk(const char* restrict buffer, size_t buffer_size, unsigned int buffer_copy, unsigned int repeats, unsigned int columns) {
@@ -205,10 +205,10 @@ static void csvcut_csvkit(const char* restrict buffer, size_t buffer_size, unsig
     print_run("csvkit csvcut", "last column", command, buffer, buffer_size, 1, repeats);
 
     sprintf(command, "python bench/csvkit-csvcut.py -c column%u,column%u > /dev/null", columns - 3,columns - 2);
-    print_run("csvkit csvcut", "two adjoining column", command, buffer, buffer_size, buffer_copy, repeats);
+    print_run("csvkit csvcut", "two adjoining column", command, buffer, buffer_size, 1, repeats);
 
     sprintf(command, "python bench/csvkit-csvcut.py -c column%u,column%u > /dev/null", columns / 2,columns - 1);
-    print_run("csvkit csvcut", "two distinct column", command, buffer, buffer_size, buffer_copy, repeats);
+    print_run("csvkit csvcut", "two distinct column", command, buffer, buffer_size, 1, repeats);
 }
 
 static void csvcut_gnucut(const char* restrict buffer, size_t buffer_size, unsigned int buffer_copy, unsigned int repeats, unsigned int columns) {
