@@ -361,7 +361,8 @@ int main(int argc, char** argv) {
     }
     char* buffer = calloc(bench_size, sizeof(char));
     fprintf(stderr, "Preparing data (%zu bytes)\n",bench_size);
-    size_t data_filled = generate_csv(buffer, bench_size, seed1, seed2, columns);
+    size_t data_filled_small;
+    size_t data_filled = generate_csv(buffer, bench_size, &data_filled_small, seed1, seed2, columns);
     fprintf(stderr, "Data ready (%zu bytes)\n",data_filled);
     if (output_stdout) {
         for (unsigned int b = 0; b < bench_copy; b++) {
@@ -384,14 +385,14 @@ int main(int argc, char** argv) {
 
     csvgrep_csvtools(buffer, data_filled, bench_copy, repeats, columns);
     if (!only_csvtools) {
-        csvgrep_csvkit(buffer, data_filled, bench_copy, repeats, columns);
+        csvgrep_csvkit(buffer, data_filled_small, bench_copy, repeats, columns);
         csvgrep_awk(buffer, data_filled, bench_copy, repeats, columns);
         csvgrep_gnugrep(buffer, data_filled, bench_copy, repeats, columns);
     }
 
     csvcut_csvtools(buffer, data_filled, bench_copy, repeats, columns);
     if (!only_csvtools) {
-        csvcut_csvkit(buffer, data_filled, bench_copy, repeats, columns);
+        csvcut_csvkit(buffer, data_filled_small, bench_copy, repeats, columns);
         csvcut_gnucut(buffer, data_filled, bench_copy, repeats, columns);
         csvcut_sed(buffer, data_filled, bench_copy, repeats, columns);
     }
