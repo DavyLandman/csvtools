@@ -223,7 +223,9 @@ static void csvcut_gnucut(const char* restrict buffer, size_t buffer_size, unsig
         sprintf(args + written, "%u", col);
         written = strlen(args);
         args[written++] = ',';
-        args[written] = '\0';
+    }
+    if (written > 0) {
+        args[written - 1] = '\0';
     }
 
     char command[255];
@@ -237,8 +239,10 @@ static void csvcut_gnucut(const char* restrict buffer, size_t buffer_size, unsig
             sprintf(args + written, "%u", col);
             written = strlen(args);
             args[written++] = ',';
-            args[written] = '\0';
         }
+    }
+    if (written > 0) {
+        args[written - 1] = '\0';
     }
     sprintf(command, "cut -d ',' -f %s > /dev/null", args);
     print_run("cut csvcut", "middle column", command, buffer, buffer_size, 1, repeats);
@@ -249,7 +253,9 @@ static void csvcut_gnucut(const char* restrict buffer, size_t buffer_size, unsig
         sprintf(args + written, "%u", col);
         written = strlen(args);
         args[written++] = ',';
-        args[written] = '\0';
+    }
+    if (written > 0) {
+        args[written - 1] = '\0';
     }
     sprintf(command, "cut -d ',' -f %s > /dev/null", args);
     print_run("cut csvcut", "last column", command, buffer, buffer_size, 1, repeats);
@@ -258,11 +264,13 @@ static void csvcut_gnucut(const char* restrict buffer, size_t buffer_size, unsig
     written = 0;
     for (unsigned int col = 1; col <= columns; col++) {
         if (col == columns - 3 || col == columns - 2) {
-            sprintf(args + written, "%u", col + 1);
+            sprintf(args + written, "%u", col);
             written = strlen(args);
             args[written++] = ',';
-            args[written] = '\0';
         }
+    }
+    if (written > 0) {
+        args[written - 1] = '\0';
     }
     sprintf(command, "cut -d ',' -f %s > /dev/null", args);
     print_run("cut csvcut", "two adjoining column", command, buffer, buffer_size, buffer_copy, repeats);
@@ -271,11 +279,14 @@ static void csvcut_gnucut(const char* restrict buffer, size_t buffer_size, unsig
     written = 0;
     for (unsigned int col = 1; col <= columns; col++) {
         if (col == columns / 2 || col == columns - 1) {
-            sprintf(args + written, "%u", col + 1);
+            sprintf(args + written, "%u", col);
             written = strlen(args);
             args[written++] = ',';
             args[written] = '\0';
         }
+    }
+    if (written > 0) {
+        args[written - 1] = '\0';
     }
     sprintf(command, "cut -d ',' -f %s > /dev/null", args);
     print_run("cut csvcut", "two distinct column", command, buffer, buffer_size, buffer_copy, repeats);
@@ -375,6 +386,7 @@ int main(int argc, char** argv) {
     fprintf(stdout, "program,name,command,min speed,max speed,median speed");
     fprintf(stdout, "\n");
 
+        csvcut_gnucut(buffer, data_filled, bench_copy, repeats, columns);
 
     fprintf(stderr, "Running pipe bench fist\n");
     if (!only_csvtools) {
