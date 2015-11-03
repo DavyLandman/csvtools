@@ -232,22 +232,17 @@ AFTER_QUOTE:
 NORMAL_CELL:;
 #ifdef BIG_STEPS
             const char* restrict char_end4 = tokenizer->buffer + buffer_read - 4;
-            current_char++;
-            while (current_char < char_end4) {
-                if (cell_delimitor[(unsigned char)*current_char++]) {
-                    current_char--;
+            while ((current_char + 1) < char_end4) {
+                if (cell_delimitor[(unsigned char)*++current_char]) {
                     goto FOUND_CELL_END;
                 }
-                if (cell_delimitor[(unsigned char)*current_char++]) {
-                    current_char--;
+                if (cell_delimitor[(unsigned char)*++current_char]) {
                     goto FOUND_CELL_END;
                 }
-                if (cell_delimitor[(unsigned char)*current_char++]) {
-                    current_char--;
+                if (cell_delimitor[(unsigned char)*++current_char]) {
                     goto FOUND_CELL_END;
                 }
-                if (cell_delimitor[(unsigned char)*current_char++]) {
-                    current_char--;
+                if (cell_delimitor[(unsigned char)*++current_char]) {
                     goto FOUND_CELL_END;
                 }
             }
