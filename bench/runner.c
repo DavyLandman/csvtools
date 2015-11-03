@@ -339,14 +339,14 @@ static void csvawk_awkraw(const char* restrict buffer, size_t buffer_size, unsig
 
 static void csvawk_awkcsvparser(const char* restrict buffer, size_t buffer_size, unsigned int buffer_copy, unsigned int repeats, unsigned int columns) {
     fprintf(stderr, "Running awk csvparser\n");
-    print_run("csvparser awk", "print second columnd", "LC_ALL='C' awk -f bench/deps/awk-csv-parser/src/csv-parser.awk -v separator=',' -v enclosure='\"' --source '{ csv_parse_record($0, separator, enclosure, csv); print csv[1]; }' > /dev/null", buffer, buffer_size, buffer_copy, repeats);
+    print_run("csvparser awk", "print second columnd", "LC_ALL='C' awk -f bench/deps/awk-csv-parser/src/csv-parser.awk -v separator=',' -v enclosure='\"' --source '{ csv_parse_record($0, separator, enclosure, csv); print csv[1]; }' > /dev/null", buffer, buffer_size, 1, repeats);
 
     char command[255];
     sprintf(command, "LC_ALL='C' awk -f bench/deps/awk-csv-parser/src/csv-parser.awk -v separator=',' -v enclosure='\"' --source 'BEGIN {s = 0; }{ csv_parse_record($0, separator, enclosure, csv); s += csv[%u]; } END { print s; }' > /dev/null", (columns / 2) - 1);
-    print_run("csvparser awk", "sum middle column", command, buffer, buffer_size, buffer_copy, repeats);
+    print_run("csvparser awk", "sum middle column", command, buffer, buffer_size, 1, repeats);
 
     sprintf(command, "LC_ALL='C' awk -f bench/deps/awk-csv-parser/src/csv-parser.awk -v separator=',' -v enclosure='\"' --source 'BEGIN {s = 0; }{ csv_parse_record($0, separator, enclosure, csv); s += csv[%u]; } END { print s; }' > /dev/null", columns - 1);
-    print_run("csvparser awk", "sum last column", command, buffer, buffer_size, buffer_copy, repeats);
+    print_run("csvparser awk", "sum last column", command, buffer, buffer_size, 1, repeats);
 }
 
 
@@ -446,10 +446,10 @@ int main(int argc, char** argv) {
         csvcut_sed(buffer, data_filled, bench_copy, repeats, columns);
     }
 
-    csvawk_csvtools(buffer, data_filled, bench_copy, repeats, columns);
+    csvawk_csvtools(buffer, data_filled, bench_copy, repeats / 3, columns);
     if (!only_csvtools) {
-        csvawk_awkraw(buffer, data_filled, bench_copy, repeats, columns);
-        csvawk_awkcsvparser(buffer, data_filled, bench_copy, repeats, columns);
+        csvawk_awkraw(buffer, data_filled, bench_copy, repeats / 3, columns);
+        csvawk_awkcsvparser(buffer, data_filled_small, bench_copy, repeats / 3, columns);
     }
 
 
