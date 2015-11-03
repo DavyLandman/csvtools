@@ -3,7 +3,7 @@
 #include <string.h>
 #include <math.h>
 #include <stdbool.h>
-#include "pcg_basic.h"
+#include "deps/pcg-c-basic/pcg_basic.h"
 #include "generate.h"
 
 

@@ -1,0 +1,6 @@
+[submodule "bench/deps/awk-csv-parser"]
+	path = bench/deps/awk-csv-parser
+	url = git@github.com:geoffroy-aubry/awk-csv-parser.git
+[submodule "bench/deps/pcg-c-basic"]
+	path = bench/deps/pcg-c-basic
+	url = git@github.com:imneme/pcg-c-basic.git

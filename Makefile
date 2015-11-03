@@ -20,7 +20,7 @@ CSV_CUT_FILES = src/csvcut.c src/csv_tokenizer.c
 CSV_PIPE_FILES = src/csvpipe.c
 CSV_UNPIPE_FILES = src/csvunpipe.c
 CSV_AWKPIPE_FILES = src/csvawkpipe.c
-BENCH_FILES = bench/runner.c bench/generate.c bench/pcg_basic.c
+BENCH_FILES = bench/runner.c bench/generate.c bench/deps/pcg-c-basic/pcg_basic.c
 
 .PHONY: all test clean test-csvgrep test-csvcut test-csvpipe test-csvunpipe test-all-sizes install
 

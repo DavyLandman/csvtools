@@ -311,6 +311,45 @@ static void csvcut_sed(const char* restrict buffer, size_t buffer_size, unsigned
     print_run("sed csvcut", "two distinct column", command, buffer, buffer_size, buffer_copy, repeats);
 
 }
+
+
+static void csvawk_csvtools(const char* restrict buffer, size_t buffer_size, unsigned int buffer_copy, unsigned int repeats, unsigned int columns) {
+    fprintf(stderr, "Running csvtools csvawk\n");
+    print_run("csvtools csvawk", "print second columnd", "bin/csvawk  '{ print $2; }' > /dev/null", buffer, buffer_size, buffer_copy, repeats);
+
+    char command[255];
+    sprintf(command, "bin/csvawk 'BEGIN { s = 0; } { s += $%u; } END { print s; }' > /dev/null", columns / 2);
+    print_run("csvtools csvawk", "sum middle column", command, buffer, buffer_size, buffer_copy, repeats);
+
+    sprintf(command, "bin/csvawk 'BEGIN { s = 0; } { s += $%u; } END { print s; }' > /dev/null", columns);
+    print_run("csvtools csvawk", "sum last column", command, buffer, buffer_size, buffer_copy, repeats);
+}
+
+static void csvawk_awkraw(const char* restrict buffer, size_t buffer_size, unsigned int buffer_copy, unsigned int repeats, unsigned int columns) {
+    fprintf(stderr, "Running raw awk\n");
+    print_run("raw awk", "print second columnd", "LC_ALL='C' awk  -F',' '{ print $2; }' > /dev/null", buffer, buffer_size, buffer_copy, repeats);
+
+    char command[255];
+    sprintf(command, "LC_ALL='C' awk -F',' 'BEGIN { s = 0; } { s += $%u; } END { print s; }' > /dev/null", columns / 2);
+    print_run("raw awk", "sum middle column", command, buffer, buffer_size, buffer_copy, repeats);
+
+    sprintf(command, "LC_ALL='C' awk -F',' 'BEGIN { s = 0; } { s += $%u; } END { print s; }' > /dev/null", columns);
+    print_run("raw awk", "sum last column", command, buffer, buffer_size, buffer_copy, repeats);
+}
+
+static void csvawk_awkcsvparser(const char* restrict buffer, size_t buffer_size, unsigned int buffer_copy, unsigned int repeats, unsigned int columns) {
+    fprintf(stderr, "Running awk csvparser\n");
+    print_run("csvparser awk", "print second columnd", "LC_ALL='C' awk -f bench/deps/awk-csv-parser/src/csv-parser.awk -v separator=',' -v enclosure='\"' --source '{ csv_parse_record($0, separator, enclosure, csv); print csv[1]; }' > /dev/null", buffer, buffer_size, buffer_copy, repeats);
+
+    char command[255];
+    sprintf(command, "LC_ALL='C' awk -f bench/deps/awk-csv-parser/src/csv-parser.awk -v separator=',' -v enclosure='\"' --source 'BEGIN {s = 0; }{ csv_parse_record($0, separator, enclosure, csv); s += csv[%u]; } END { print s; }' > /dev/null", (columns / 2) - 1);
+    print_run("csvparser awk", "sum middle column", command, buffer, buffer_size, buffer_copy, repeats);
+
+    sprintf(command, "LC_ALL='C' awk -f bench/deps/awk-csv-parser/src/csv-parser.awk -v separator=',' -v enclosure='\"' --source 'BEGIN {s = 0; }{ csv_parse_record($0, separator, enclosure, csv); s += csv[%u]; } END { print s; }' > /dev/null", columns - 1);
+    print_run("csvparser awk", "sum last column", command, buffer, buffer_size, buffer_copy, repeats);
+}
+
+
 // based on xxhash avalanche
 #define PRIME1   2654435761U
 #define PRIME2   2246822519U
@@ -405,6 +444,12 @@ int main(int argc, char** argv) {
         csvcut_csvkit(buffer, data_filled_small, bench_copy, repeats, columns);
         csvcut_gnucut(buffer, data_filled, bench_copy, repeats, columns);
         csvcut_sed(buffer, data_filled, bench_copy, repeats, columns);
+    }
+
+    csvawk_csvtools(buffer, data_filled, bench_copy, repeats, columns);
+    if (!only_csvtools) {
+        csvawk_awkraw(buffer, data_filled, bench_copy, repeats, columns);
+        csvawk_awkcsvparser(buffer, data_filled, bench_copy, repeats, columns);
     }
 
 
