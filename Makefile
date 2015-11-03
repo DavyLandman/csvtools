@@ -33,6 +33,9 @@ bench: bin/bench
 bin/bench: $(BENCH_FILES) bin/ all
 	$(CC) -o $@ $(LinkFlags) $(CFLAGS) $(BENCH_FILES) 
 
+bench/deps/pcg-c-basic/pcg_basic.c:
+	(cd bench/deps/pcg-c-basic/ && git submodule init && git submodule update)
+	(cd bench/deps/awk-csv-parser/ && git submodule init && git submodule update)
 
 csvcut: bin/csvcut
 bin/csvcut: $(CSV_CUT_FILES) Makefile bin/
