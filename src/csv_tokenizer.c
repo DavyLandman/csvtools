@@ -3,10 +3,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <limits.h>
 #include <string.h>
 #include "debug.h"
 #include "csv_tokenizer.h"
 
+#define BIG_STEPS
 
 enum tokenizer_state {
     FRESH,
@@ -21,7 +23,6 @@ struct csv_tokenizer {
     const char* restrict buffer;
     Cell* restrict cells;
     Cell const* restrict cells_end;
-    char scan_mask[4];
 
     unsigned long long records_processed;
 
@@ -37,10 +38,6 @@ struct csv_tokenizer* setup_tokenizer(char separator, const char* restrict buffe
     tokenizer->cells = cells;
     tokenizer->cells_end = cells + cell_size - 2; // two room at the end
     assert(tokenizer->cells < tokenizer->cells_end);
-    tokenizer->scan_mask[0] = '\r';
-    tokenizer->scan_mask[1] = '\n';
-    tokenizer->scan_mask[2] = separator;
-    tokenizer->scan_mask[3] = '\0';
     tokenizer->records_processed = 0;
     tokenizer->state = FRESH;
     return tokenizer;
@@ -73,6 +70,14 @@ void tokenize_cells(struct csv_tokenizer* restrict tokenizer, size_t buffer_offs
     const char* restrict current_char = tokenizer->buffer + buffer_offset;
     const char* restrict char_end = tokenizer->buffer + buffer_read;
     const char* restrict current_start = current_char;
+
+
+    assert(CHAR_BIT == 8);
+    bool cell_delimitor[256];
+    memset(cell_delimitor, false, sizeof(bool) * 256);
+    cell_delimitor[(unsigned char)tokenizer->separator] = true;
+    cell_delimitor[(unsigned char)'\n'] = true;
+    cell_delimitor[(unsigned char)'\r'] = true;
 
     Cell* restrict cell = tokenizer->cells;
     LOG_V("tokenizer-start\t%d %c (%lu)\n", tokenizer->state, *current_char, buffer_offset );
@@ -225,14 +230,30 @@ AFTER_QUOTE:
         else {
             // start of a new field
 NORMAL_CELL:;
-            do {
-                current_char++;
-                current_char += strcspn(current_char, tokenizer->scan_mask);
+#ifdef BIG_STEPS
+            const char* restrict char_end4 = tokenizer->buffer + buffer_read - 4;
+            while (current_char < char_end4) {
+                if (cell_delimitor[(unsigned char)current_char[1]])  {
+                    current_char += 1;
+                    goto FOUND_CELL_END;
+                }
+                if (cell_delimitor[(unsigned char)current_char[2]])  {
+                    current_char += 2;
+                    goto FOUND_CELL_END;
+                }
+                if (cell_delimitor[(unsigned char)current_char[3]])  {
+                    current_char += 3;
+                    goto FOUND_CELL_END;
+                }
+                if (cell_delimitor[(unsigned char)current_char[4]])  {
+                    current_char += 4;
+                    goto FOUND_CELL_END;
+                }
+                current_char += 4;
             }
-            while (current_char < char_end && *current_char == '\0'); // strspn stops at 0 chars.
-            if (current_char > char_end) {
-                current_char = char_end;
-            }
+#endif
+            while (++current_char < char_end && !cell_delimitor[(unsigned char)*current_char]);
+FOUND_CELL_END:;
             cell->start = current_start;
             cell->length = (size_t)((current_char)-current_start);
             cell++;
