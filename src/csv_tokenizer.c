@@ -7,7 +7,6 @@
 #include "debug.h"
 #include "csv_tokenizer.h"
 
-#define SCAN_GLIBC
 
 enum tokenizer_state {
     FRESH,
@@ -22,9 +21,7 @@ struct csv_tokenizer {
     const char* restrict buffer;
     Cell* restrict cells;
     Cell const* restrict cells_end;
-#ifdef SCAN_GLIBC
     char scan_mask[4];
-#endif
 
     unsigned long long records_processed;
 
@@ -40,12 +37,10 @@ struct csv_tokenizer* setup_tokenizer(char separator, const char* restrict buffe
     tokenizer->cells = cells;
     tokenizer->cells_end = cells + cell_size - 2; // two room at the end
     assert(tokenizer->cells < tokenizer->cells_end);
-#ifdef SCAN_GLIBC
     tokenizer->scan_mask[0] = '\r';
     tokenizer->scan_mask[1] = '\n';
     tokenizer->scan_mask[2] = separator;
     tokenizer->scan_mask[3] = '\0';
-#endif
     tokenizer->records_processed = 0;
     tokenizer->state = FRESH;
     return tokenizer;
@@ -121,7 +116,6 @@ void tokenize_cells(struct csv_tokenizer* restrict tokenizer, size_t buffer_offs
     while (current_char < char_end) {
         if (*current_char == '"') {
 IN_QUOTE:;
-#ifdef SCAN_GLIBC
             while(++current_char < char_end) {
                 current_char = memchr(current_char, '"', char_end - current_char);
                 if (current_char == NULL) {
@@ -147,26 +141,6 @@ IN_QUOTE:;
                     }
                 }
             }
-#else
-            while (++current_char < char_end) {
-                if (*current_char == '"') {
-                    const char* peek = current_char + 1;
-                    if (peek == char_end) {
-                        // at the end of stream and not sure if escaped or not
-                        tokenizer->state = PREV_QUOTE;
-                        *last_full = false;
-                        break;
-                    }
-                    else if (*peek == '"') {
-                        current_char++;
-                        continue;
-                    }
-                    else {
-                        break;
-                    }
-                }
-            }
-#endif
 AFTER_QUOTE:
             if (current_char != char_end) {
                 current_char++;
@@ -251,7 +225,6 @@ AFTER_QUOTE:
         else {
             // start of a new field
 NORMAL_CELL:;
-#ifdef SCAN_GLIBC
             do {
                 current_char++;
                 current_char += strcspn(current_char, tokenizer->scan_mask);
@@ -260,31 +233,6 @@ NORMAL_CELL:;
             if (current_char > char_end) {
                 current_char = char_end;
             }
-#else
-            const char* restrict char_end4 = tokenizer->buffer + buffer_read - 4;
-            char sep = tokenizer->separator;
-            while (current_char < char_end4) {
-                if (current_char[1] == sep ||current_char[1] == '\n' || current_char[1] == '\r')  {
-                    current_char += 1;
-                    goto FOUND_CELL_END;
-                }
-                if (current_char[2] == sep ||current_char[2] == '\n' || current_char[2] == '\r')  {
-                    current_char += 2;
-                    goto FOUND_CELL_END;
-                }
-                if (current_char[3] == sep ||current_char[3] == '\n' || current_char[3] == '\r')  {
-                    current_char += 3;
-                    goto FOUND_CELL_END;
-                }
-                if (current_char[4] == sep ||current_char[4] == '\n' || current_char[4] == '\r')  {
-                    current_char += 4;
-                    goto FOUND_CELL_END;
-                }
-                current_char += 4;
-            }
-            while (++current_char < char_end &&	*current_char != tokenizer->separator && *current_char != '\n' && *current_char != '\r');
-FOUND_CELL_END:;
-#endif
             cell->start = current_start;
             cell->length = (size_t)((current_char)-current_start);
             cell++;
