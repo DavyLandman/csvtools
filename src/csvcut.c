@@ -17,7 +17,7 @@
 
 struct csv_tokenizer* _tokenizer;
 
-static char _buffer[BUFFER_SIZE + 1];
+static char _buffer[BUFFER_SIZE + BUFFER_TOKENIZER_POSTFIX];
 static Cell _cells[CELL_BUFFER_SIZE];
 
 static struct {
@@ -49,11 +49,11 @@ int main(int argc, char** argv) {
     SEQUENTIAL_HINT(config.source);
     while ((chars_read = fread(_buffer, 1, BUFFER_SIZE, config.source)) > 0) {
         LOG_D("New data read: %zu\n", chars_read);
-        _buffer[chars_read] = '\0';
         size_t buffer_consumed = 0;
         size_t cells_found = 0;
         bool last_full = true;
 
+        prepare_tokenization(_tokenizer, _buffer, chars_read);
         while (buffer_consumed < chars_read) {
             tokenize_cells(_tokenizer, buffer_consumed, chars_read, &buffer_consumed, &cells_found, &last_full);
             if (first == true) {

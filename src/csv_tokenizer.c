@@ -66,6 +66,13 @@ static void print_current_line(const char* restrict current_char,const char* res
     free(printable_string);
 }
 
+void prepare_tokenization(struct csv_tokenizer* restrict tokenizer, char* restrict buffer, size_t buffer_read) {
+    buffer[buffer_read] = '\0';
+    buffer[buffer_read + 1] = tokenizer->separator;
+    buffer[buffer_read + 2] = '\r';
+    buffer[buffer_read + 3] = '\0';
+}
+
 void tokenize_cells(struct csv_tokenizer* restrict tokenizer, size_t buffer_offset, size_t buffer_read, size_t* restrict buffer_consumed, size_t* restrict cells_found, bool* restrict last_full) {
     const char* restrict current_char = tokenizer->buffer + buffer_offset;
     const char* restrict char_end = tokenizer->buffer + buffer_read;
@@ -123,7 +130,7 @@ void tokenize_cells(struct csv_tokenizer* restrict tokenizer, size_t buffer_offs
 IN_QUOTE:;
             while(++current_char < char_end) {
                 current_char = memchr(current_char, '"', char_end - current_char);
-                if (current_char == NULL) {
+                if (current_char == NULL || current_char > char_end) {
                     // end of stream reached before end of cell found
                     current_char = char_end;
                     break;
@@ -231,8 +238,7 @@ AFTER_QUOTE:
             // start of a new field
 NORMAL_CELL:;
 #ifdef BIG_STEPS
-            const char* restrict char_end4 = tokenizer->buffer + buffer_read - 4;
-            while ((current_char + 1) < char_end4) {
+            while (true) {
                 if (cell_delimitor[(unsigned char)current_char[1]]) {
                     current_char += 1;
                     goto FOUND_CELL_END;
@@ -250,9 +256,13 @@ NORMAL_CELL:;
                     goto FOUND_CELL_END;
                 }
             }
-#endif
-            while (++current_char < char_end && !cell_delimitor[(unsigned char)*current_char]);
 FOUND_CELL_END:;
+            if (current_char > char_end) {
+                current_char = char_end;
+            }
+#else
+            while (++current_char < char_end && !cell_delimitor[(unsigned char)*current_char]);
+#endif
             cell->start = current_start;
             cell->length = (size_t)((current_char)-current_start);
             cell++;
