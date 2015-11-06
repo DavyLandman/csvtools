@@ -17,7 +17,7 @@ endif
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Linux)
-	CCFLAGS += -D_GNU_SOURCE=1
+	CFLAGS += -D_GNU_SOURCE=1
 endif
 
 CSV_GREP_FILES = src/csvgrep.c src/csv_tokenizer.c
