@@ -18,47 +18,64 @@ This repository contains gnu-alike tools for parsing [RFC 4180](https://tools.ie
 
 ## Performance
 
-Benchmarking on the  [Canada 2011 census](http://www12.statcan.gc.ca/census-recensement/2011/dp-pd/prof/details/download-telecharger/comprehensive/comp-csv-tab-dwnld-tlchrgr.cfm?Lang=E) we compare `csvtools` with other solutions. Note that these solutions might not correctly handle CSV's.
+Benchmarking is complicated, the primary goal is to measure only that of interest, by reducing the impact of other factors. Originally csvtools was benchmarked on the [Canada 2011 census](http://www12.statcan.gc.ca/census-recensement/2011/dp-pd/prof/details/download-telecharger/comprehensive/comp-csv-tab-dwnld-tlchrgr.cfm?Lang=E), however, we were primarily measuring the limits of the SSD and the caches around the file system. 
 
-The performance was measured with a 850MB csv file on a SSD drive, and the maximum speed was 519MB/s.
+Now we benchmark with a custom tool: [`bench/runner.c`](bench/runner.c). This benchmark first generates an in memory random csv data set (see [`bench/generate.c`](bench/generate.c)), and then pipes this into the applications under test. This at least takes the IO and FS out of the equation.
 
-### [csvcut](doc/csvcut.md)
+we compare `csvtools` with other solutions. Note that these solutions might not correctly handle CSV's. The reported numbers are _median_ MiB/s.
+
+### Pure pipe speed
+
+| command | median speed |
+| :-- | --: |
+| `cat > /dev/null` | 2042.1 MiB/s |
+| `wc -l > /dev/null` | 2149.0 MiB/s |
+| `md5sum > /dev/null` | 566.8 MiB/s |
+
+
+### csvcut
 
 | scenario | csvkit | cut | sed | csvtools |
 | :--- | ---: | ---: | ---: | ---: |
-| dropping first column | 4.32 MiB/s | 195 MiB/s | 228 MiB/s | _318 MiB/s_ |
-| dropping third column | 4.12 MiB/s | 224 MiB/s | 91 MiB/s | _359 MiB/s_ |
+| first column | 8.0 MiB/s | 278.8 MiB/s | 356.9 MiB/s | _644.1 MiB/s_ |
+| middle column  | 8.1 MiB/s | 280.3 MiB/s |  138.6 MiB/s | _555.8 MiB/s_ |
+| last column | 8.0 MiB/s | 280.0 MiB/s | 90.1 MiB/s | _565.0 MiB/s_ |
+| two adjoining columns | 7.3 MiB/s | 359 MiB/s | 59.6 MiB/s | _561.6 MiB/s_ |
+| two distinct columns | 7.3 MiB/s | 449 MiB/s | 59.8 MiB/s | _480.9 MiB/s_ |
 
-So even compared to sed or cut, which aren't handeling quoted separators correctly, our `csvcut` is much faster.
+So even compared to sed or cut, which aren't handling quoted separators correctly, our `csvcut` is much faster. 
 
-### [csvgrep](doc/csvgrep.md)
+### csvgrep
 
 | scenario | csvkit | grep | awk | csvtools |
 | :--- | ---: | ---: | ---: | ---: |
-| one pattern | 1.86 MiB/s | 284 MiB/s | 208 MiB/s | _310 MiB/s_ |
-| two patterns | 1.87 MiB/s | 224 MiB/s | 140 MiB/s | _258 MiB/s_ |
+| first column | 7.6 MiB/s | 347.9 MiB/s | 469.2 MiB/s | _588 MiB/s_ |
+| middle column | 7.8 MiB/s | 302.8 MiB/s | 379.3 MiB/s | _579 MiB/s_ |
+| last column | 7.7 MiB/s | 392.7 MiB/s | 341.5 MiB/s | _632.5 MiB/s_ |
+| two distinct columns | 9.0 MiB/s | 273.9 MiB/s | 380.0 MiB/s | _569.7 MiB/s_ |
 
 Faster than grep and awk, this is because the column selection in grep is done with negative character classes multiple times.
 
-There are ofcourse regular expressions possible where PCRE is slower than grep.
+There are off course regular expressions possible where PCRE is slower than grep.
 
-### [csvawk](doc/csvawk.md)
+### csvawk
 
 | scenario | awk | awk-csv-parser | csvtools |
 | :--- | ---: | ---: | ---: |
-| print second column | 317 MiB/s | 2.21 MiB/s | _307 MiB/s_ |
-| count numeric column | 219 MiB/s | 2.23 MiB/s | _217 MiB/s_ |
+| print second column | 428.5 MiB/s | 2.45 MiB/s | _236.8 MiB/s_ |
+| sum last column | 350.5 MiB/s | 2.4 MiB/s | _200.3 MiB/s_ |
 
-Since we wrap `awk` the awk raw is the maximum speed, but we can see only a small overhead, for accurate results.
+Here some attention is still required, `csvawk` calls `awk`, so there is a limit and it does parse it twice, but there could be some further improvements here. The results of the second test are different for raw `awk` and `csvawk`, since awk can't handle nested quotes or newlines.
 
 ### Why so fast?
 No malloc & memcpy!
+
 Or as valgrind reports it:
 ```
 ==2473==   total heap usage: 18 allocs, 18 frees, 210 bytes allocated
 ```
 
-In the crititical path of tokenizing the csv stream and writing it to `stdout`, there are no copies or memory allocations. The programs read into a buffer from `stdin` (or the file passed as last argument), the tokenizer stores offsets (to that buffer) and lenghts in a cell array, and the printer writes from the same buffer, using the offsets and lengths from the cell array. 
+In the critical path of tokenizing the csv stream and writing it to `stdout`, there are no copies or memory allocations. The programs read into a buffer from `stdin` (or the file passed as last argument), the tokenizer stores offsets (to that buffer) and lenghts in a cell array, and the printer writes from the same buffer, using the offsets and lengths from the cell array. 
 
 ## Instalation
 
@@ -66,3 +83,12 @@ In the crititical path of tokenizing the csv stream and writing it to `stdout`, 
 2. Navigate to it
 2. `make install` (or with prefix: `make install prefix=~/.apps/`)
 3. enjoy :)
+
+## Future work
+
+- Decide on issue #4
+- Think of better names that don't clash with csvkit?
+- More tests
+- add option to remove the header
+- sort on columns?
+
