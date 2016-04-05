@@ -15,6 +15,11 @@ ifdef PERF
 CFLAGS+=-ggdb
 endif
 
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Linux)
+	CFLAGS += -D_GNU_SOURCE
+endif
+
 CSV_GREP_FILES = src/csvgrep.c src/csv_tokenizer.c
 CSV_CUT_FILES = src/csvcut.c src/csv_tokenizer.c
 CSV_PIPE_FILES = src/csvpipe.c
