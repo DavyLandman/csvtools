@@ -49,8 +49,8 @@ So even compared to sed or cut, which aren't handling quoted separators correctl
 
 | scenario | csvkit | grep | awk | csvtools |
 | :--- | ---: | ---: | ---: | ---: |
-| first column | 7.6 MiB/s | 347.9 MiB/s | 469.2 MiB/s | _588 MiB/s_ |
-| middle column | 7.8 MiB/s | 302.8 MiB/s | 379.3 MiB/s | _579 MiB/s_ |
+| first column | 7.6 MiB/s | 347.9 MiB/s | 469.2 MiB/s | _588.0 MiB/s_ |
+| middle column | 7.8 MiB/s | 302.8 MiB/s | 379.3 MiB/s | _579.0 MiB/s_ |
 | last column | 7.7 MiB/s | 392.7 MiB/s | 341.5 MiB/s | _632.5 MiB/s_ |
 | two distinct columns | 9.0 MiB/s | 273.9 MiB/s | 380.0 MiB/s | _569.7 MiB/s_ |
 
