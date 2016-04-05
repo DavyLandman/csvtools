@@ -18,7 +18,7 @@ This repository contains gnu-alike tools for parsing [RFC 4180](https://tools.ie
 
 ## Performance
 
-Benchmarking on the  [Canada 2011 sensus](http://www12.statcan.gc.ca/census-recensement/2011/dp-pd/prof/details/download-telecharger/comprehensive/comp-csv-tab-dwnld-tlchrgr.cfm?Lang=E) we compare `csvtools` with other solutions. Note that these solutions might not correctly handle CSV's.
+Benchmarking on the  [Canada 2011 census](http://www12.statcan.gc.ca/census-recensement/2011/dp-pd/prof/details/download-telecharger/comprehensive/comp-csv-tab-dwnld-tlchrgr.cfm?Lang=E) we compare `csvtools` with other solutions. Note that these solutions might not correctly handle CSV's.
 
 The performance was measured with a 850MB csv file on a SSD drive, and the maximum speed was 519MB/s.
 
