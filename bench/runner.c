@@ -315,13 +315,13 @@ static void csvcut_sed(const char* restrict buffer, size_t buffer_size, unsigned
 
 static void csvawk_csvtools(const char* restrict buffer, size_t buffer_size, unsigned int buffer_copy, unsigned int repeats, unsigned int columns) {
     fprintf(stderr, "Running csvtools csvawk\n");
-    print_run("csvtools csvawk", "print second columnd", "bin/csvawk  '{ print $2; }' > /dev/null", buffer, buffer_size, buffer_copy, repeats);
+    print_run("csvtools csvawk", "print second columnd", "LC_ALL='C' bin/csvawk  '{ print $2; }' > /dev/null", buffer, buffer_size, buffer_copy, repeats);
 
     char command[255];
-    sprintf(command, "bin/csvawk 'BEGIN { s = 0; } { s += $%u; } END { print s; }' > /dev/null", columns / 2);
+    sprintf(command, "LC_ALL='C' bin/csvawk 'BEGIN { s = 0; } { s += $%u; } END { print s; }' > /dev/null", columns / 2);
     print_run("csvtools csvawk", "sum middle column", command, buffer, buffer_size, buffer_copy, repeats);
 
-    sprintf(command, "bin/csvawk 'BEGIN { s = 0; } { s += $%u; } END { print s; }' > /dev/null", columns);
+    sprintf(command, "LC_ALL='C' bin/csvawk 'BEGIN { s = 0; } { s += $%u; } END { print s; }' > /dev/null", columns);
     print_run("csvtools csvawk", "sum last column", command, buffer, buffer_size, buffer_copy, repeats);
 }
 
