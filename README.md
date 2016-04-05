@@ -11,8 +11,8 @@ This repository contains gnu-alike tools for parsing [RFC 4180](https://tools.ie
 
 ## Tools
 
-- `csvcut` a `cut(1)` equivelant to drop columns from a csv file
-- `csvgrep` a `grep(1)` equivelant to match on one or more collumns per row, and only keep the rows matching all or any of the patterns. (it uses PRCE for regular expression goodness)
+- `csvcut` a `cut(1)` equivalent to drop columns from a csv file
+- `csvgrep` a `grep(1)` equivalent to match on one or more collumns per row, and only keep the rows matching all or any of the patterns. (it uses PRCE for regular expression goodness)
 - `csvawk` a wrapper for `awk(1)` which correctly recognizes rows and cells (even across newlines). This is comparable to [geoffroy-aubry/awk-csv-parser](https://github.com/geoffroy-aubry/awk-csv-parser), except that it also supports embedded newlines.
 - `csvpipe` and `csvunpipe` translate the newlines separating rows to `\0` such that `sort -z` and `uniq -z` and other null-terminated-line based tools can be used more correctly.
 
