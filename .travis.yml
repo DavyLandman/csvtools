@@ -1,12 +1,15 @@
 language: c
 compiler: clang
-script: if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; then make test DISABLE_ASSERTS="" ; fi
+script: if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; then make test DISABLE_ASSERTS="" COVERAGE=1 ; fi
 
 env:
   global:
    # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
    #   via the "travis encrypt" command using the project repo's public key
    - secure: "L7U9+2GkKWXMw4i3kQ1oDa8Kr7rEXQNkZG0zMbNUPCqZdZJxeNpypi9wtoGHDOJ7h1Caxztcd/wUKUgoTqEAku4h8gNidRIF1NaRqvA3oAxHNFqetoSOie0DB5t+45/rpi16Q6vfVPeiqDyh80PpYq8iTRhznx7KqzNGbVcwivM="
+
+after_success:
+    - bash <(curl -s https://codecov.io/bash)
 
 addons:
     apt:

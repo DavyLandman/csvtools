@@ -15,6 +15,10 @@ ifdef PERF
 CFLAGS+=-ggdb
 endif
 
+ifdef COVERAGE
+CFLAGS+=-coverage
+endif
+
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Linux)
 	CFLAGS += -D_GNU_SOURCE
