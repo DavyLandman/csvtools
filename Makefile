@@ -15,8 +15,10 @@ ifdef PERF
 CFLAGS+=-ggdb
 endif
 
+DO_COVERAGE=""
 ifdef COVERAGE
 CFLAGS+=-coverage
+DO_COVERAGE="COVERAGE=1"
 endif
 
 UNAME_S := $(shell uname -s)
@@ -82,22 +84,22 @@ endif
 test: test-csvgrep test-csvcut test-csvpipe test-csvunpipe test-csvawkpipe
 
 test-csvgrep: bin/csvgrep
-	cd test && ./runtest.sh csvgrep $(LARGE_FILES)
+	cd test && ./runtest.sh csvgrep $(LARGE_FILES) $(DO_COVERAGE)
 
 test-csvcut: bin/csvcut
-	cd test && ./runtest.sh csvcut $(LARGE_FILES)
+	cd test && ./runtest.sh csvcut $(LARGE_FILES) $(DO_COVERAGE)
 	
 test-csvpipe: bin/csvpipe
-	cd test && ./runtest.sh csvpipe $(LARGE_FILES)
+	cd test && ./runtest.sh csvpipe $(LARGE_FILES) $(DO_COVERAGE)
 
 test-csvunpipe: bin/csvunpipe
-	cd test && ./runtest.sh csvunpipe $(LARGE_FILES)
+	cd test && ./runtest.sh csvunpipe $(LARGE_FILES) $(DO_COVERAGE)
 
 test-csvawkpipe: bin/csvawkpipe
-	cd test && ./runtest.sh csvawkpipe $(LARGE_FILES)
+	cd test && ./runtest.sh csvawkpipe $(LARGE_FILES) $(DO_COVERAGE)
 
 test-all-sizes: 
-	cd test && ./test-sizes.sh
+	 ./test/test-sizes.sh $(DO_COVERAGE)
 
 prefix=/usr/local
     
@@ -111,3 +113,6 @@ install: all
 
 clean:
 	rm -rf bin/*
+deep-clean:
+	rm -rf bin/*
+	rm -rf *.gc{ov,da,no}
