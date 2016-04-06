@@ -12,6 +12,7 @@ fi
 
 report_coverage() {
     if [ "$DO_COVERAGE" = true ] ; then
+        cd ..
         echo "Reporting to codecov"
         bash /tmp/codecov.sh -b "normal-test-$PROGRAM" 
     fi
