@@ -1,6 +1,6 @@
 language: c
 compiler: clang
-script: if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; then make test DISABLE_ASSERTS="" COVERAGE=1 ; fi
+script: if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; then make test DISABLE_ASSERTS="" COVERAGE=1 && test/test-sizes.sh COVERAGE=1 ; fi
 
 env:
   global:

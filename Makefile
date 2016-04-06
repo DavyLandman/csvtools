@@ -111,5 +111,3 @@ install: all
 
 clean:
 	rm -rf bin/*
-	rm *.gcda
-	rm *.gcno

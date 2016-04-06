@@ -1,9 +1,13 @@
 #!/bin/sh
+# run from root dir!
+
+EXTRA_FLAGS=""
+if [ "$#" -eq 1 ]; then
+    EXTRA_FLAGS="$1"
+fi
 
 
 set -e
-
-cd ..
 
 #silent function from https://serverfault.com/questions/607884
 SILENT_LOG=/tmp/silent_log_$$.txt
@@ -23,24 +27,24 @@ test_with_size() {
 	if (($1 > 30)); then
 		if (($1 > 72)) ; then # csvcut has to read the full header
 			if (($1 > 145)); then # csvgrep has to fit the max line length in 2*BUFFER_SIZE
-				make test-csvcut test-csvgrep BUFFER_SIZE=$1 DISABLE_ASSERTS=-g
+				make test-csvcut test-csvgrep BUFFER_SIZE=$1 DISABLE_ASSERTS=-g $EXTRA_FLAGS
 			else
-				make test-csvgrep BUFFER_SIZE=$1 DISABLE_ASSERTS=-g SKIP_LARGE_FILES=1
+				make test-csvgrep BUFFER_SIZE=$1 DISABLE_ASSERTS=-g SKIP_LARGE_FILES=1 $EXTRA_FLAGS
 				if (($? > 0)); then
     				echo "\033[91mFailure with size $1\033[39m"
 					return 1
 				fi
-				make test-csvcut BUFFER_SIZE=$1 DISABLE_ASSERTS=-g
+				make test-csvcut BUFFER_SIZE=$1 DISABLE_ASSERTS=-g $EXTRA_FLAGS
 			fi
 		else
-			make test-csvcut test-csvgrep BUFFER_SIZE=$1 DISABLE_ASSERTS=-g SKIP_LARGE_FILES=1
+			make test-csvcut test-csvgrep BUFFER_SIZE=$1 DISABLE_ASSERTS=-g SKIP_LARGE_FILES=1 $EXTRA_FLAGS
 		fi
 	fi
 	if (($? > 0)); then
     	echo "\033[91mFailure with size $1\033[39m"
 		return 1
 	fi
-	make test-csvpipe test-csvunpipe test-csvpipe test-csvunpipe test-csvawkpipe BUFFER_SIZE=$1 DISABLE_ASSERTS=-g
+	make test-csvpipe test-csvunpipe test-csvpipe test-csvunpipe test-csvawkpipe BUFFER_SIZE=$1 DISABLE_ASSERTS=-g $EXTRA_FLAGS
 	if (($? > 0)); then
     	echo "\033[91mFailure with size $1\033[39m"
 		return 1
