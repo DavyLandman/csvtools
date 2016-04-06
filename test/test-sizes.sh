@@ -70,7 +70,7 @@ test_with_size() {
 echo "Testing predefined sizes"
 for s in 1 2 3 4 5 6 7 8 11 16 21 24 32 36 63 128 1024;
 	do
-		silent "make clean"
+		silent "make deep-clean"
 		echo "Testing size: \t $s"
 		silent test_with_size $s
 	done
@@ -78,7 +78,7 @@ for s in 1 2 3 4 5 6 7 8 11 16 21 24 32 36 63 128 1024;
 echo "Trying 40 random sizes"
 for x in $(seq 1 40);
 	do
-		silent "make clean"
+		silent "make deep-clean"
         RANDOMNUM=$( head -200 /dev/urandom | cksum | cut -f1 -d " ")
 		s=$(( ( RANDOMNUM % 400 )  + 1 ));
         echo "Testing size: \t $s (run $x/40)"
