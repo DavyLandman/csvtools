@@ -44,6 +44,12 @@ test_xz() {
 	fi
 }
 printf "Testing $PROGRAM"
+OUTPUT=$("../bin/$PROGRAM" -h 2>&1 | wc -l)
+if (($? > 0)) || [ $OUTPUT -lt 1 ]; then
+    printf "\t- %s has no help params" "$PROGRAM"
+    RESULT=1
+fi
+
 for INPUT in $PROGRAM/*_input.csv*;
 do
     source "$(printf $INPUT | sed 's/input\.csv.*$/command/')"
