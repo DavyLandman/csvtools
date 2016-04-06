@@ -4,19 +4,16 @@ LARGE_FILES=$2
 RESULT=0
 
 DO_COVERAGE=false
-if [ "$#" -eq 2 ]; then
+if [ "$#" -eq 2 ] && [ "$LARGE_FILES" = 1 ]; then
     DO_COVERAGE=true
     echo "Downloading codecov code"
     curl -s https://codecov.io/bash > /tmp/codecov.sh
 fi
 
-RUN=1
-
 report_coverage() {
-    if [ "$DO_COVERAGE" = true ]; then
+    if [ "$DO_COVERAGE" = true ] ; then
         echo "Reporting to codecov"
-        bash /tmp/codecov.sh -b "sizes-run-$RUN" 
-        RUN=$((RUN+1))
+        bash /tmp/codecov.sh -b "normal-test-$PROGRAM" 
     fi
 }
 
