@@ -70,7 +70,7 @@ bin/csvgrep: $(CSV_GREP_FILES) Makefile bin/
 	$(CC) -o $@ $(LinkFlags) `pcre-config --libs` $(CFLAGS) `pcre-config --cflags` $(CSV_GREP_FILES) 
 
 bin/csvtokenizercounts: $(CSV_TOK_TEST_COUNT_FILES) Makefile bin/
-	$(CC) -o $@ $(LinkFlags) $(CFLAGS) $(CSV_TOK_TEST_COUNT_FILES) -Isrc/
+	$(CC) -o $@ $(LinkFlags) $(CFLAGS) $(CSV_TOK_TEST_COUNT_FILES)
 
 csvawk: bin/csvawk
 bin/csvawk: src/csvawk.sh bin/csvawkpipe bin/

@@ -58,17 +58,10 @@ test_with_size() {
     	echo "\033[91mFailure with size $1\033[39m"
 		return 1
 	fi
-	make test-csvpipe test-csvunpipe test-csvpipe test-csvunpipe test-csvawkpipe BUFFER_SIZE=$1 DISABLE_ASSERTS=-g $EXTRA_FLAGS
+	make test-csvpipe test-csvunpipe test-csvpipe test-csvunpipe test-csvawkpipe test-tokenizer BUFFER_SIZE=$1 DISABLE_ASSERTS=-g $EXTRA_FLAGS
 	if (($? > 0)); then
     	echo "\033[91mFailure with size $1\033[39m"
 		return 1
-	fi
-	if (($1 > 1)); then
-        make test-tokenizer BUFFER_SIZE=$1 DISABLE_ASSERTS=-g $EXTRA_FLAGS
-        if (($? > 0)); then
-            echo "\033[91mFailure with size $1\033[39m"
-            return 1
-        fi
 	fi
     report_coverage
 	return 0

@@ -4,10 +4,10 @@
 #include <stdbool.h>
 #include <assert.h>
 #include <string.h>
-#include "csv_tokenizer.h"
-#include "debug.h"
+#include "../src/csv_tokenizer.h"
+#include "../src/debug.h"
 
-#define CELL_BUFFER_SIZE (BUFFER_SIZE / 2) + 2
+#define CELL_BUFFER_SIZE (BUFFER_SIZE / 2) + 2 + 1
 struct csv_tokenizer* _tokenizer;
 static char _buffer[BUFFER_SIZE + BUFFER_TOKENIZER_POSTFIX];
 static Cell _cells[CELL_BUFFER_SIZE];
