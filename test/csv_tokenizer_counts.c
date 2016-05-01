@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <unistd.h>
-#include <stdint.h>
 #include <stdbool.h>
 #include <assert.h>
 #include <string.h>
@@ -19,7 +18,7 @@ int main(int argc, char** argv) {
         return 0;
     }
     size_t chars_read;
-    uint64_t cell_total = 0;
+    unsigned long long cell_total = 0;
     _tokenizer = setup_tokenizer(',', _buffer, _cells, CELL_BUFFER_SIZE);
     while ((chars_read = fread(_buffer, 1, BUFFER_SIZE, stdin)) > 0) {
         LOG_D("New data read: %zu\n", chars_read);
