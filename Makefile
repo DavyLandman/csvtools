@@ -28,12 +28,13 @@ endif
 
 CSV_GREP_FILES = src/csvgrep.c src/csv_tokenizer.c
 CSV_CUT_FILES = src/csvcut.c src/csv_tokenizer.c
+CSV_TOK_TEST_COUNT_FILES = test/csv_tokenizer_counts.c src/csv_tokenizer.c
 CSV_PIPE_FILES = src/csvpipe.c
 CSV_UNPIPE_FILES = src/csvunpipe.c
 CSV_AWKPIPE_FILES = src/csvawkpipe.c
 BENCH_FILES = bench/runner.c bench/generate.c bench/deps/pcg-c-basic/pcg_basic.c
 
-.PHONY: all test clean test-csvgrep test-csvcut test-csvpipe test-csvunpipe test-all-sizes install
+.PHONY: all test clean test-csvgrep test-csvcut test-csvpipe test-csvunpipe test-all-sizes test-tokenizer install
 
 all: bin/csvcut bin/csvgrep bin/csvpipe bin/csvunpipe bin/csvawkpipe bin/csvawk
 
@@ -68,6 +69,9 @@ csvgrep: bin/csvgrep
 bin/csvgrep: $(CSV_GREP_FILES) Makefile bin/
 	$(CC) -o $@ $(LinkFlags) `pcre-config --libs` $(CFLAGS) `pcre-config --cflags` $(CSV_GREP_FILES) 
 
+bin/csvtokenizercounts: $(CSV_TOK_TEST_COUNT_FILES) Makefile bin/
+	$(CC) -o $@ $(LinkFlags) $(CFLAGS) $(CSV_TOK_TEST_COUNT_FILES) -Isrc/
+
 csvawk: bin/csvawk
 bin/csvawk: src/csvawk.sh bin/csvawkpipe bin/
 	cp src/csvawk.sh bin/csvawk
@@ -81,7 +85,7 @@ else
 LARGE_FILES=1
 endif
 
-test: test-csvgrep test-csvcut test-csvpipe test-csvunpipe test-csvawkpipe
+test: test-csvgrep test-csvcut test-csvpipe test-csvunpipe test-csvawkpipe test-tokenizer
 
 test-csvgrep: bin/csvgrep
 	cd test && ./runtest.sh csvgrep $(LARGE_FILES) $(DO_COVERAGE)
@@ -98,8 +102,13 @@ test-csvunpipe: bin/csvunpipe
 test-csvawkpipe: bin/csvawkpipe
 	cd test && ./runtest.sh csvawkpipe $(LARGE_FILES) $(DO_COVERAGE)
 
+test-tokenizer: bin/csvtokenizercounts
+	cd test && ./runtest.sh csvtokenizercounts $(LARGE_FILES) $(DO_COVERAGE)
+
 test-all-sizes: 
 	 ./test/test-sizes.sh $(DO_COVERAGE)
+
+
 
 prefix=/usr/local
     
