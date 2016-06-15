@@ -12,13 +12,19 @@
 #define AWK_ROW_SEPARATOR '\x1E'
 #define AWK_CELL_SEPARATOR '\x1F'
 
+#ifdef _GNU_SOURCE
+    #define FAST_GNU_LIBC
+#endif
 
-static char _buffer[BUFFER_SIZE];
+static char _buffer[BUFFER_SIZE + 1];
 
 static struct {
     FILE* source;
     char separator;
     bool drop_header;
+#ifdef FAST_GNU_LIBC
+    char scan_mask[4];
+#endif
 } config;
 
 static void parse_config(int argc, char** argv);
@@ -29,6 +35,7 @@ int main(int argc, char** argv) {
     size_t chars_read;
     SEQUENTIAL_HINT(config.source);
     while ((chars_read = fread(_buffer, sizeof(char), BUFFER_SIZE, config.source)) > 0) {
+        _buffer[BUFFER_SIZE] = '\0';
         do_pipe(chars_read);
     }
     if (config.source != stdin) {
@@ -76,6 +83,13 @@ static void parse_config(int argc, char** argv) {
         }
     }
 
+#ifdef FAST_GNU_LIBC
+    tokenizer->scan_mask[0] = '\r';
+    tokenizer->scan_mask[1] = '\n';
+    tokenizer->scan_mask[2] = separator;
+    tokenizer->scan_mask[3] = '\"';
+#endif
+
     LOG_D("%s\n","Done parsing config params");    
 }
 
@@ -94,6 +108,16 @@ static void do_pipe(size_t chars_read) {
     char const* restrict char_end = _buffer + chars_read;
     char const* restrict current_start = _buffer;
     LOG_V("Piping: %zu state: %d first char: %c\n", chars_read, _state, *current_char);
+
+#ifndef FAST_GNU_LIBC
+    assert(CHAR_BIT == 8);
+    bool cell_delimitor[256];
+    memset(cell_delimitor, false, sizeof(bool) * 256);
+    cell_delimitor[(unsigned char)config.separator] = true;
+    cell_delimitor[(unsigned char)'\n'] = true;
+    cell_delimitor[(unsigned char)'\r'] = true;
+    cell_delimitor[(unsigned char)'\"'] = true;
+#endif
 
     if (config.drop_header && first_run) {
         while (current_char < char_end) {
@@ -194,8 +218,37 @@ IN_QUOTE:
             current_char++;
         }
         else {
-            // all other chars, just skip untill we find another
-            while (++current_char < char_end && *current_char != '"' && *current_char != '\r' && *current_char != '\n' && *current_char != config.separator);
+            // all other chars, just skip until we find another interesting character
+#ifdef FAST_GNU_LIBC
+            do {
+                current_char++;
+                current_char += strcspn(current_char, config.scan_mask);
+            } while (current_char < char_end && *current_char == '\0'); // strspn stops at 0 chars.
+#else
+            while (true) {
+                if (cell_delimitor[(unsigned char)current_char[1]]) {
+                    current_char += 1;
+                    goto FOUND_CELL_END;
+                }
+                if (cell_delimitor[(unsigned char)current_char[2]]) {
+                    current_char += 2;
+                    goto FOUND_CELL_END;
+                }
+                if (cell_delimitor[(unsigned char)current_char[3]]) {
+                    current_char += 3;
+                    goto FOUND_CELL_END;
+                }
+                current_char += 4;
+                if (cell_delimitor[(unsigned char)current_char[0]]) {
+                    goto FOUND_CELL_END;
+                }
+            }
+FOUND_CELL_END:;
+#endif
+            while (current_char > char_end) {
+                // we added a \0 past the end just to detect the end, so let's revert to the actual end
+                current_char--;
+            }
         }
     }
     if (current_start < char_end) {
