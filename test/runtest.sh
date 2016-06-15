@@ -3,6 +3,20 @@ PROGRAM=$1
 LARGE_FILES=$2
 RESULT=0
 
+DO_COVERAGE=false
+if [ "$#" -eq 2 ] && [ "$LARGE_FILES" = 1 ]; then
+    DO_COVERAGE=true
+    echo "Downloading codecov code"
+    curl -s https://codecov.io/bash > /tmp/codecov.sh
+fi
+
+report_coverage() {
+    if [ "$DO_COVERAGE" = true ] ; then
+        cd ..
+        echo "Reporting to codecov"
+        bash /tmp/codecov.sh -b "normal-test-$PROGRAM" 
+    fi
+}
 
 test_normal() {
     REF_FILE=$OUTPUT
@@ -72,4 +86,5 @@ if [ $RESULT == 0 ]; then
 else
 	printf "Tests failed\n"
 fi
+report_coverage
 exit $RESULT
