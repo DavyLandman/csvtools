@@ -84,10 +84,10 @@ static void parse_config(int argc, char** argv) {
     }
 
 #ifdef FAST_GNU_LIBC
-    tokenizer->scan_mask[0] = '\r';
-    tokenizer->scan_mask[1] = '\n';
-    tokenizer->scan_mask[2] = separator;
-    tokenizer->scan_mask[3] = '\"';
+    config.scan_mask[0] = '\r';
+    config.scan_mask[1] = '\n';
+    config.scan_mask[2] = config.separator;
+    config.scan_mask[3] = '\"';
 #endif
 
     LOG_D("%s\n","Done parsing config params");    
