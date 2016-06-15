@@ -12,7 +12,7 @@ else
 CFLAGS+=-O3 $(DISABLE_ASSERTS)
 endif
 ifdef PERF
-CFLAGS+=-ggdb
+CFLAGS+=-lprofiler -g
 endif
 
 DO_COVERAGE=""
