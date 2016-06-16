@@ -16,7 +16,7 @@
     #define FAST_GNU_LIBC
 #endif
 
-static char _buffer[BUFFER_SIZE + 1];
+static char _buffer[BUFFER_SIZE + 2];
 
 static struct {
     FILE* source;
@@ -40,7 +40,8 @@ int main(int argc, char** argv) {
     size_t chars_read;
     SEQUENTIAL_HINT(config.source);
     while ((chars_read = fread(_buffer, sizeof(char), BUFFER_SIZE, config.source)) > 0) {
-        _buffer[BUFFER_SIZE] = '\0';
+        _buffer[chars_read] = '\0';
+        _buffer[chars_read+1] = '\"';
         do_pipe(chars_read);
     }
     if (config.source != stdin) {
