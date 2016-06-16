@@ -31,7 +31,7 @@ CSV_CUT_FILES = src/csvcut.c src/csv_tokenizer.c
 CSV_TOK_TEST_COUNT_FILES = test/csv_tokenizer_counts.c src/csv_tokenizer.c
 CSV_PIPE_FILES = src/csvpipe.c
 CSV_UNPIPE_FILES = src/csvunpipe.c
-CSV_AWKPIPE_FILES = src/csvawkpipe.c
+CSV_AWK_FILES = src/csvawk.c
 BENCH_FILES = bench/runner.c bench/generate.c bench/deps/pcg-c-basic/pcg_basic.c
 
 .PHONY: all test clean test-csvgrep test-csvcut test-csvpipe test-csvunpipe test-all-sizes test-tokenizer install
@@ -61,9 +61,9 @@ csvunpipe: bin/csvunpipe
 bin/csvunpipe: $(CSV_UNPIPE_FILES) Makefile bin/
 	$(CC) -o $@ $(LinkFlags) $(CFLAGS) $(CSV_UNPIPE_FILES) 
 
-csvawkpipe: bin/csvawkpipe
-bin/csvawkpipe: $(CSV_AWKPIPE_FILES) Makefile bin/
-	$(CC) -o $@ $(LinkFlags) $(CFLAGS) $(CSV_AWKPIPE_FILES) 
+csvawk: bin/csvawk
+bin/csvawk: $(CSV_AWK_FILES) Makefile bin/
+	$(CC) -o $@ $(LinkFlags) $(CFLAGS) $(CSV_AWK_FILES) 
 
 csvgrep: bin/csvgrep
 bin/csvgrep: $(CSV_GREP_FILES) Makefile bin/
@@ -71,10 +71,6 @@ bin/csvgrep: $(CSV_GREP_FILES) Makefile bin/
 
 bin/csvtokenizercounts: $(CSV_TOK_TEST_COUNT_FILES) Makefile bin/
 	$(CC) -o $@ $(LinkFlags) $(CFLAGS) $(CSV_TOK_TEST_COUNT_FILES)
-
-csvawk: bin/csvawk
-bin/csvawk: src/csvawk.sh bin/csvawkpipe bin/
-	cp src/csvawk.sh bin/csvawk
 
 bin/:
 	mkdir bin/
@@ -85,7 +81,7 @@ else
 LARGE_FILES=1
 endif
 
-test: test-csvgrep test-csvcut test-csvpipe test-csvunpipe test-csvawkpipe test-tokenizer
+test: test-csvgrep test-csvcut test-csvpipe test-csvunpipe test-csvawk test-tokenizer
 
 test-csvgrep: bin/csvgrep
 	cd test && ./runtest.sh csvgrep $(LARGE_FILES) $(DO_COVERAGE)
@@ -99,8 +95,8 @@ test-csvpipe: bin/csvpipe
 test-csvunpipe: bin/csvunpipe
 	cd test && ./runtest.sh csvunpipe $(LARGE_FILES) $(DO_COVERAGE)
 
-test-csvawkpipe: bin/csvawkpipe
-	cd test && ./runtest.sh csvawkpipe $(LARGE_FILES) $(DO_COVERAGE)
+test-csvawk: bin/csvawk
+	cd test && ./runtest.sh csvawk $(LARGE_FILES) $(DO_COVERAGE)
 
 test-tokenizer: bin/csvtokenizercounts
 	cd test && ./runtest.sh csvtokenizercounts $(LARGE_FILES) $(DO_COVERAGE)
@@ -116,7 +112,6 @@ install: all
 	install -m 0755 bin/csvcut $(prefix)/bin/csvcut
 	install -m 0755 bin/csvgrep $(prefix)/bin/csvgrep
 	install -m 0755 bin/csvawk $(prefix)/bin/csvawk
-	install -m 0755 bin/csvawkpipe $(prefix)/bin/csvawkpipe
 	install -m 0755 bin/csvpipe $(prefix)/bin/csvpipe
 	install -m 0755 bin/csvunpipe $(prefix)/bin/csvunpipe
 

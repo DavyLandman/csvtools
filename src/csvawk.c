@@ -25,12 +25,17 @@ static struct {
 #ifdef FAST_GNU_LIBC
     char scan_mask[4];
 #endif
+    char* script;
+    FILE* target;
 } config;
 
+static void start_awk();
 static void parse_config(int argc, char** argv);
 static void do_pipe(size_t chars_read);
 int main(int argc, char** argv) {
     parse_config(argc, argv);
+
+    start_awk();
 
     size_t chars_read;
     SEQUENTIAL_HINT(config.source);
@@ -41,11 +46,12 @@ int main(int argc, char** argv) {
     if (config.source != stdin) {
         fclose(config.source);
     }
+    pclose(config.target);
     return 0;
 }
 
 static void print_help() {
-    fprintf(stderr,"usage: csvawkpipe [OPTIONS] [FILE]");
+    fprintf(stderr,"usage: csvawk [OPTIONS] AWKSCRIPT [FILE]");
     fprintf(stderr,"options:");
     fprintf(stderr, "-s ,\n");
     fprintf(stderr, "  Which character to use as separator (default is ,)\n");
@@ -74,13 +80,33 @@ static void parse_config(int argc, char** argv) {
                 break;
         }
     }
-
-    if (optind < argc) {
-        config.source = fopen(argv[optind], "r");
-        if (!config.source) {
-            fprintf(stderr, "Could not open file %s for reading\n", argv[optind]);
+    int args_left = argc - optind;
+    switch(args_left) {
+        case 0:
+            fprintf(stderr, "Missing AWK script\n");
+            print_help();
             exit(1);
-        }
+            break;
+        case 2:
+            config.source = fopen(argv[argc - 1], "r");
+            if (!config.source) {
+                fprintf(stderr, "Could not open file %s for reading\n", argv[optind]);
+                exit(1);
+            }
+            // fall through
+        case 1:
+            config.script = argv[optind];
+            break;
+        default:
+            if (args_left > 2) {
+                fprintf(stderr, "Too many arguments\n");
+            }
+            else {
+                fprintf(stderr, "Missing AWK script\n");
+            }
+            print_help();
+            exit(1);
+            break;
     }
 
 #ifdef FAST_GNU_LIBC
@@ -208,7 +234,7 @@ IN_QUOTE:
             }
             else if (*current_char == '\n') {
                 // we have windows new lines, so lets skip over this byte
-                fwrite(current_start, sizeof(char), current_char - current_start, stdout);
+                fwrite(current_start, sizeof(char), current_char - current_start, config.target);
                 current_char++;
                 current_start = current_char;
             }
@@ -252,7 +278,20 @@ FOUND_CELL_END:;
         }
     }
     if (current_start < char_end) {
-        fwrite(current_start, sizeof(char), char_end - current_start, stdout);
+        fwrite(current_start, sizeof(char), char_end - current_start, config.target);
     }
+    fflush(config.target);
+}
+
+void start_awk() {
+    char* prefix = "awk \'BEGIN{ FS=\"\\x1F\"; RS=\"\\x1E\" } ";
+    char* command = calloc(strlen(prefix) + strlen(config.script) + 2, sizeof(char));
+    sprintf(command, "%s %s\'", prefix, config.script);
+    config.target = popen(command, "w");
+    if (!config.target) {
+        fprintf(stderr, "Can't start \"%s\"\n", command);
+        exit(1);
+    }
+    free(command);
 }
 
