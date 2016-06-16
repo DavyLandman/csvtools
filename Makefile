@@ -36,7 +36,7 @@ BENCH_FILES = bench/runner.c bench/generate.c bench/deps/pcg-c-basic/pcg_basic.c
 
 .PHONY: all test clean test-csvgrep test-csvcut test-csvpipe test-csvunpipe test-all-sizes test-tokenizer install
 
-all: bin/csvcut bin/csvgrep bin/csvpipe bin/csvunpipe bin/csvawkpipe bin/csvawk
+all: bin/csvcut bin/csvgrep bin/csvpipe bin/csvunpipe bin/csvawk bin/csvawk
 
 # yes, we recompile csv_tokenizer, it keeps the makefile simpler and it allows
 # the compiler to do some cross module optimizations :)
