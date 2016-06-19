@@ -8,7 +8,7 @@
 #include "debug.h"
 #include "csv_tokenizer.h"
 
-#ifdef _GNU_SOURCE
+#if defined(_GNU_SOURCE) && !defined(SLOW_PATH)
     #define FAST_GNU_LIBC
 #endif
 

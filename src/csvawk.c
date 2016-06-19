@@ -12,7 +12,7 @@
 #define AWK_ROW_SEPARATOR '\x1E'
 #define AWK_CELL_SEPARATOR '\x1F'
 
-#ifdef _GNU_SOURCE
+#if defined(_GNU_SOURCE) && !defined(SLOW_PATH)
     #define FAST_GNU_LIBC
 #endif
 

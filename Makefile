@@ -23,10 +23,12 @@ endif
 
 
 ifndef TEST_SLOW_PATH
-UNAME_S := $(shell uname -s)
-ifeq ($(UNAME_S),Linux)
-	CFLAGS += -D_GNU_SOURCE
-endif
+	UNAME_S := $(shell uname -s)
+	ifeq ($(UNAME_S),Linux)
+		CFLAGS += -D_GNU_SOURCE
+	endif
+else
+	CFLAGS += -D_SLOW_PATH
 endif
 
 CSV_GREP_FILES = src/csvgrep.c src/csv_tokenizer.c
