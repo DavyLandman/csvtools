@@ -110,11 +110,12 @@ test-all-sizes:
 	 ./test/test-sizes.sh $(DO_COVERAGE)
 
 test-all-sizes-ci: 
-	 bash <(curl -s https://codecov.io/bash)
+	 curl -s https://codecov.io/bash > /tmp/codecov.sh
+	 bash /tmp/codecov.sh
 	 ./test/test-sizes.sh $(DO_COVERAGE)
-	 bash <(curl -s https://codecov.io/bash)
+	 bash /tmp/codecov.sh
 	 ./test/test-sizes.sh $(DO_COVERAGE) TEST_SLOW_PATH=1
-	 bash <(curl -s https://codecov.io/bash)
+	 bash /tmp/codecov.sh
 
 
 
