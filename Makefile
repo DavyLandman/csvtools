@@ -107,11 +107,11 @@ test-tokenizer: bin/csvtokenizercounts
 	cd test && ./runtest.sh csvtokenizercounts $(LARGE_FILES) $(DO_COVERAGE)
 
 test-all-sizes: 
-	 [ "$CI" = "true" ] && bash <(curl -s https://codecov.io/bash)
+	 $([ "$CI" = "true" ] && bash <(curl -s https://codecov.io/bash))
 	 ./test/test-sizes.sh $(DO_COVERAGE)
-	 [ "$CI" = "true" ] && bash <(curl -s https://codecov.io/bash)
+	 $([ "$CI" = "true" ] && bash <(curl -s https://codecov.io/bash))
 	 ./test/test-sizes.sh $(DO_COVERAGE) TEST_SLOW_PATH=1
-	 [ "$CI" = "true" ] && bash <(curl -s https://codecov.io/bash)
+	 $([ "$CI" = "true" ] && bash <(curl -s https://codecov.io/bash))
 
 
 
