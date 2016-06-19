@@ -3,7 +3,7 @@
 
 
 EXTRA_FLAGS=""
-if (( $# > 0 )); then
+if [ "$#" -ne 0 ]; then
     EXTRA_FLAGS="$@"
 fi
 
