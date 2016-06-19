@@ -3,9 +3,9 @@
 
 
 EXTRA_FLAGS=""
-
-RUN=1
-
+if (( $# > 0 )); then
+    EXTRA_FLAGS="$@"
+fi
 
 set -e
 

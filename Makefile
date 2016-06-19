@@ -2,11 +2,11 @@ BUFFER_SIZE=1048576 # 1024K can be overridden with make BUFFER_SIZE=20
 LinkFlags=
 CFLAGS+=-std=gnu99 -Wall -pedantic -Wextra -DBUFFER_SIZE=$(BUFFER_SIZE) -fno-strict-aliasing
 
-DISABLE_ASSERTS=-DNDEBUG=1
+DISABLE_ASSERTS=-DNDEBUG
 ifdef DEBUG # set with `make .. DEBUG=1`
-CFLAGS+=-g -DDEBUG=1
+CFLAGS+=-g -DDEBUG
 ifdef VERBOSE
-CFLAGS+=-DMOREDEBUG=1
+CFLAGS+=-DMOREDEBUG
 endif
 else
 CFLAGS+=-O3 $(DISABLE_ASSERTS)
@@ -21,9 +21,12 @@ CFLAGS+=-coverage
 DO_COVERAGE="COVERAGE=1"
 endif
 
+
+ifndef TEST_SLOW_PATH
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Linux)
 	CFLAGS += -D_GNU_SOURCE
+endif
 endif
 
 CSV_GREP_FILES = src/csvgrep.c src/csv_tokenizer.c
@@ -103,6 +106,7 @@ test-tokenizer: bin/csvtokenizercounts
 
 test-all-sizes: 
 	 ./test/test-sizes.sh $(DO_COVERAGE)
+	 ./test/test-sizes.sh $(DO_COVERAGE) TEST_SLOW_PATH=1
 
 
 
