@@ -35,7 +35,9 @@ static void do_pipe(size_t chars_read);
 int main(int argc, char** argv) {
     parse_config(argc, argv);
 
-    start_awk();
+    if (config.target != stdout) {
+        start_awk();
+    }
 
     size_t chars_read;
     SEQUENTIAL_HINT(config.source);
@@ -47,7 +49,9 @@ int main(int argc, char** argv) {
     if (config.source != stdin) {
         fclose(config.source);
     }
-    pclose(config.target);
+    if (config.target != stdout) {
+        pclose(config.target);
+    }
     return 0;
 }
 
@@ -66,13 +70,16 @@ static void parse_config(int argc, char** argv) {
     config.drop_header = false;
 
     char c;
-    while ((c = getopt (argc, argv, "s:d")) != -1) {
+    while ((c = getopt (argc, argv, "s:dp")) != -1) {
         switch (c) {
             case 's': 
                 config.separator = optarg[0];
                 break;
             case 'd':
                 config.drop_header = true;
+                break;
+            case 'p':
+                config.target = stdout;
                 break;
             case '?':
             case 'h':
