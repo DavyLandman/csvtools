@@ -256,7 +256,7 @@ static size_t finish_config(size_t cells_found) {
     const char* new_line = _cells[config.column_count-1].start + _cells[config.column_count - 1].length;
     config.newline[0] = new_line[0];
     config.newline_length = 1;
-    if (new_line[1] == '\n' || new_line[0] == '\r') {
+    if (new_line[1] == '\n' && new_line[0] == '\r') {
         config.newline[1] = '\n';
         config.newline_length = 2;
     }
