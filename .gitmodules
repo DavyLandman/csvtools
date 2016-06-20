@@ -4,3 +4,6 @@
 [submodule "bench/deps/pcg-c-basic"]
 	path = bench/deps/pcg-c-basic
 	url = https://github.com/imneme/pcg-c-basic.git
+[submodule "deps/pcg-c"]
+	path = deps/pcg-c
+	url = https://github.com/imneme/pcg-c.git
