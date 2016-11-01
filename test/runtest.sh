@@ -28,8 +28,8 @@ test_normal() {
 }
 
 test_xz() {
-	REF=$(xzcat "$OUTPUT" | md5sum)
-	OUTPUT=$(xzcat "$INPUT" | "../bin/$PROGRAM" "${ARGS[@]}" | md5sum)
+	REF=$(xzcat "$OUTPUT" | openssl md5)
+	OUTPUT=$(xzcat "$INPUT" | "../bin/$PROGRAM" "${ARGS[@]}" | openssl md5)
 	if (($? > 0)); then
         printf "\t- %s params: \"%s\" = \t Failed (%s crashed)\n" "$INPUT" "${ARGS[*]}" "$PROGRAM"
 		RESULT=1

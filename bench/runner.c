@@ -429,7 +429,7 @@ int main(int argc, char** argv) {
     if (!only_csvtools) {
         print_run("bench pipe", "cat", "cat > /dev/null", buffer, data_filled, bench_copy, repeats);
         print_run("bench pipe", "wc -l",  "wc -l > /dev/null", buffer, data_filled, bench_copy, repeats);
-        print_run("bench pipe", "md5sum", "md5sum > /dev/null", buffer, data_filled, bench_copy, repeats);
+        print_run("bench pipe", "md5sum", "openssl md5 > /dev/null", buffer, data_filled, bench_copy, repeats);
     }
 
     csvgrep_csvtools(buffer, data_filled, bench_copy, repeats, columns);
