@@ -3,23 +3,9 @@
 
 
 EXTRA_FLAGS=""
-DO_COVERAGE=false
-if [ "$#" -eq 1 ]; then
-    DO_COVERAGE=true
-    EXTRA_FLAGS="COVERAGE=1"
-    echo "Downloading codecov code"
-    curl -s https://codecov.io/bash > /tmp/codecov.sh
+if [ "$#" -ne 0 ]; then
+    EXTRA_FLAGS="$@"
 fi
-
-RUN=1
-
-report_coverage() {
-    if [ "$DO_COVERAGE" = true ]; then
-        echo "Reporting to codecov"
-        bash /tmp/codecov.sh -b "sizes-run-$RUN" 
-        RUN=$((RUN+1))
-    fi
-}
 
 set -e
 
@@ -58,12 +44,11 @@ test_with_size() {
     	echo "\033[91mFailure with size $1\033[39m"
 		return 1
 	fi
-	make test-csvpipe test-csvunpipe test-csvpipe test-csvunpipe test-csvawkpipe test-tokenizer BUFFER_SIZE=$1 DISABLE_ASSERTS=-g $EXTRA_FLAGS
+	make test-csvpipe test-csvunpipe test-csvpipe test-csvunpipe test-csvawk test-tokenizer BUFFER_SIZE=$1 DISABLE_ASSERTS=-g $EXTRA_FLAGS
 	if (($? > 0)); then
     	echo "\033[91mFailure with size $1\033[39m"
 		return 1
 	fi
-    report_coverage
 	return 0
 }
 

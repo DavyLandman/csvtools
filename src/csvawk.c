@@ -12,33 +12,51 @@
 #define AWK_ROW_SEPARATOR '\x1E'
 #define AWK_CELL_SEPARATOR '\x1F'
 
+#if defined(_GNU_SOURCE) && !defined(SLOW_PATH)
+    #define FAST_GNU_LIBC
+#endif
 
-static char _buffer[BUFFER_SIZE];
+static char _buffer[BUFFER_SIZE + 2];
 
 static struct {
     FILE* source;
     char separator;
     bool drop_header;
+#ifdef FAST_GNU_LIBC
+    char scan_mask[4];
+#endif
+    char* script;
+    FILE* target;
 } config;
 
+static void start_awk();
 static void parse_config(int argc, char** argv);
 static void do_pipe(size_t chars_read);
 int main(int argc, char** argv) {
     parse_config(argc, argv);
 
+    if (config.target != stdout) {
+        start_awk();
+    }
+
     size_t chars_read;
     SEQUENTIAL_HINT(config.source);
     while ((chars_read = fread(_buffer, sizeof(char), BUFFER_SIZE, config.source)) > 0) {
+        _buffer[chars_read] = '\0';
+        _buffer[chars_read+1] = '\"';
         do_pipe(chars_read);
     }
     if (config.source != stdin) {
         fclose(config.source);
     }
+    if (config.target != stdout) {
+        pclose(config.target);
+    }
     return 0;
 }
 
 static void print_help() {
-    fprintf(stderr,"usage: csvawkpipe [OPTIONS] [FILE]");
+    fprintf(stderr,"usage: csvawk [OPTIONS] AWKSCRIPT [FILE]");
     fprintf(stderr,"options:");
     fprintf(stderr, "-s ,\n");
     fprintf(stderr, "  Which character to use as separator (default is ,)\n");
@@ -52,7 +70,7 @@ static void parse_config(int argc, char** argv) {
     config.drop_header = false;
 
     char c;
-    while ((c = getopt (argc, argv, "s:d")) != -1) {
+    while ((c = getopt (argc, argv, "s:dp")) != -1) {
         switch (c) {
             case 's': 
                 if (strcmp(optarg, "\\t") == 0)
@@ -63,6 +81,9 @@ static void parse_config(int argc, char** argv) {
             case 'd':
                 config.drop_header = true;
                 break;
+            case 'p':
+                config.target = stdout;
+                break;
             case '?':
             case 'h':
                 print_help();
@@ -70,14 +91,41 @@ static void parse_config(int argc, char** argv) {
                 break;
         }
     }
-
-    if (optind < argc) {
-        config.source = fopen(argv[optind], "r");
-        if (!config.source) {
-            fprintf(stderr, "Could not open file %s for reading\n", argv[optind]);
+    int args_left = argc - optind;
+    switch(args_left) {
+        case 0:
+            fprintf(stderr, "Missing AWK script\n");
+            print_help();
             exit(1);
-        }
+            break;
+        case 2:
+            config.source = fopen(argv[argc - 1], "r");
+            if (!config.source) {
+                fprintf(stderr, "Could not open file %s for reading\n", argv[optind]);
+                exit(1);
+            }
+            // fall through
+        case 1:
+            config.script = argv[optind];
+            break;
+        default:
+            if (args_left > 2) {
+                fprintf(stderr, "Too many arguments\n");
+            }
+            else {
+                fprintf(stderr, "Missing AWK script\n");
+            }
+            print_help();
+            exit(1);
+            break;
     }
+
+#ifdef FAST_GNU_LIBC
+    config.scan_mask[0] = '\r';
+    config.scan_mask[1] = '\n';
+    config.scan_mask[2] = config.separator;
+    config.scan_mask[3] = '\"';
+#endif
 
     LOG_D("%s\n","Done parsing config params");    
 }
@@ -97,6 +145,16 @@ static void do_pipe(size_t chars_read) {
     char const* restrict char_end = _buffer + chars_read;
     char const* restrict current_start = _buffer;
     LOG_V("Piping: %zu state: %d first char: %c\n", chars_read, _state, *current_char);
+
+#ifndef FAST_GNU_LIBC
+    assert(CHAR_BIT == 8);
+    bool cell_delimitor[256];
+    memset(cell_delimitor, false, sizeof(bool) * 256);
+    cell_delimitor[(unsigned char)config.separator] = true;
+    cell_delimitor[(unsigned char)'\n'] = true;
+    cell_delimitor[(unsigned char)'\r'] = true;
+    cell_delimitor[(unsigned char)'\"'] = true;
+#endif
 
     if (config.drop_header && first_run) {
         while (current_char < char_end) {
@@ -187,7 +245,7 @@ IN_QUOTE:
             }
             else if (*current_char == '\n') {
                 // we have windows new lines, so lets skip over this byte
-                fwrite(current_start, sizeof(char), current_char - current_start, stdout);
+                fwrite(current_start, sizeof(char), current_char - current_start, config.target);
                 current_char++;
                 current_start = current_char;
             }
@@ -197,12 +255,54 @@ IN_QUOTE:
             current_char++;
         }
         else {
-            // all other chars, just skip untill we find another
-            while (++current_char < char_end && *current_char != '"' && *current_char != '\r' && *current_char != '\n' && *current_char != config.separator);
+            // all other chars, just skip until we find another interesting character
+#ifdef FAST_GNU_LIBC
+            do {
+                current_char++;
+                current_char += strcspn(current_char, config.scan_mask);
+            } while (current_char < char_end && *current_char == '\0'); // strspn stops at 0 chars.
+#else
+            while (true) {
+                if (cell_delimitor[(unsigned char)current_char[1]]) {
+                    current_char += 1;
+                    goto FOUND_CELL_END;
+                }
+                if (cell_delimitor[(unsigned char)current_char[2]]) {
+                    current_char += 2;
+                    goto FOUND_CELL_END;
+                }
+                if (cell_delimitor[(unsigned char)current_char[3]]) {
+                    current_char += 3;
+                    goto FOUND_CELL_END;
+                }
+                current_char += 4;
+                if (cell_delimitor[(unsigned char)current_char[0]]) {
+                    goto FOUND_CELL_END;
+                }
+            }
+FOUND_CELL_END:;
+#endif
+            while (current_char > char_end) {
+                // we added a \0 past the end just to detect the end, so let's revert to the actual end
+                current_char--;
+            }
         }
     }
     if (current_start < char_end) {
-        fwrite(current_start, sizeof(char), char_end - current_start, stdout);
+        fwrite(current_start, sizeof(char), char_end - current_start, config.target);
     }
+    fflush(config.target);
+}
+
+void start_awk() {
+    char* prefix = "awk \'BEGIN{ FS=\"\\x1F\"; RS=\"\\x1E\" } ";
+    char* command = calloc(strlen(prefix) + strlen(config.script) + 2, sizeof(char));
+    sprintf(command, "%s %s\'", prefix, config.script);
+    config.target = popen(command, "w");
+    if (!config.target) {
+        fprintf(stderr, "Can't start \"%s\"\n", command);
+        exit(1);
+    }
+    free(command);
 }
 

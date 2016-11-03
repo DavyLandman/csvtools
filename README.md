@@ -64,10 +64,14 @@ There are off course regular expressions possible where PCRE is slower than grep
 
 | scenario | awk | awk-csv-parser | csvtools |
 | :--- | ---: | ---: | ---: |
-| print second column | 428.5 MiB/s | 2.45 MiB/s | _236.8 MiB/s_ |
-| sum last column | 350.5 MiB/s | 2.4 MiB/s | _200.3 MiB/s_ |
+| print second column | 428.5 MiB/s | 2.45 MiB/s | _278.5 MiB/s_ |
+| sum last column | 350.5 MiB/s | 2.4 MiB/s | _225.9 MiB/s_ |
 
-Here some attention is still required, `csvawk` calls `awk`, so there is a limit and it does parse it twice, but there could be some further improvements here. The results of the second test are different for raw `awk` and `csvawk`, since awk can't handle nested quotes or newlines.
+Sadly, `csvawk` is slower than pure `awk`. This is caused by the custom record separator (instead of the normal newline). Benchmarking `csvawk` piping to `awk` shows it performs around 800 MiB/s, and if newlines are used as separators, the whole `csvawk` performs around similar to `awk`'s raw performance. 
+
+However, newlines are not valid separators, since they can occur inside quoted fields. For `csvawk` we generate [`\x1E`](https://en.wikipedia.org/wiki/C0_and_C1_control_codes#Field_separators) between records (as per ISO 646), and [`\x1F`](https://en.wikipedia.org/wiki/C0_and_C1_control_codes#Field_separators) between fields in a record. 
+
+The results of the second benchmark differ, since awk doesn't correctly handle nested separators.
 
 ### Why so fast?
 No malloc & memcpy!

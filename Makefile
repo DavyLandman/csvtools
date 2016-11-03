@@ -2,17 +2,17 @@ BUFFER_SIZE=1048576 # 1024K can be overridden with make BUFFER_SIZE=20
 LinkFlags=
 CFLAGS+=-std=gnu99 -Wall -pedantic -Wextra -DBUFFER_SIZE=$(BUFFER_SIZE) -fno-strict-aliasing
 
-DISABLE_ASSERTS=-DNDEBUG=1
+DISABLE_ASSERTS=-DNDEBUG
 ifdef DEBUG # set with `make .. DEBUG=1`
-CFLAGS+=-g -DDEBUG=1
+CFLAGS+=-g -DDEBUG
 ifdef VERBOSE
-CFLAGS+=-DMOREDEBUG=1
+CFLAGS+=-DMOREDEBUG
 endif
 else
 CFLAGS+=-O3 $(DISABLE_ASSERTS)
 endif
 ifdef PERF
-CFLAGS+=-ggdb
+CFLAGS+=-lprofiler -g
 endif
 
 DO_COVERAGE=""
@@ -21,9 +21,13 @@ CFLAGS+=-coverage
 DO_COVERAGE="COVERAGE=1"
 endif
 
-UNAME_S := $(shell uname -s)
-ifeq ($(UNAME_S),Linux)
-	CFLAGS += -D_GNU_SOURCE
+ifndef TEST_SLOW_PATH
+	UNAME_S := $(shell uname -s)
+	ifeq ($(UNAME_S),Linux)
+		CFLAGS += -D_GNU_SOURCE
+	endif
+else
+	CFLAGS += -D_SLOW_PATH
 endif
 
 CSV_GREP_FILES = src/csvgrep.c src/csv_tokenizer.c
@@ -32,12 +36,12 @@ CSV_LOOK_FILES = src/csvlook.c src/csv_tokenizer.c
 CSV_TOK_TEST_COUNT_FILES = test/csv_tokenizer_counts.c src/csv_tokenizer.c
 CSV_PIPE_FILES = src/csvpipe.c
 CSV_UNPIPE_FILES = src/csvunpipe.c
-CSV_AWKPIPE_FILES = src/csvawkpipe.c
+CSV_AWK_FILES = src/csvawk.c
 BENCH_FILES = bench/runner.c bench/generate.c bench/deps/pcg-c-basic/pcg_basic.c
 
 .PHONY: all test clean test-csvgrep test-csvcut test-csvlook test-csvpipe test-csvunpipe test-all-sizes test-tokenizer install
 
-all: bin/csvcut bin/csvlook bin/csvgrep bin/csvpipe bin/csvunpipe bin/csvawkpipe bin/csvawk
+all: bin/csvcut bin/csvlook bin/csvgrep bin/csvpipe bin/csvunpipe bin/csvawk bin/csvawk
 
 # yes, we recompile csv_tokenizer, it keeps the makefile simpler and it allows
 # the compiler to do some cross module optimizations :)
@@ -66,9 +70,9 @@ csvunpipe: bin/csvunpipe
 bin/csvunpipe: $(CSV_UNPIPE_FILES) Makefile bin/
 	$(CC) -o $@ $(LinkFlags) $(CFLAGS) $(CSV_UNPIPE_FILES) 
 
-csvawkpipe: bin/csvawkpipe
-bin/csvawkpipe: $(CSV_AWKPIPE_FILES) Makefile bin/
-	$(CC) -o $@ $(LinkFlags) $(CFLAGS) $(CSV_AWKPIPE_FILES) 
+csvawk: bin/csvawk
+bin/csvawk: $(CSV_AWK_FILES) Makefile bin/
+	$(CC) -o $@ $(LinkFlags) $(CFLAGS) $(CSV_AWK_FILES) 
 
 csvgrep: bin/csvgrep
 bin/csvgrep: $(CSV_GREP_FILES) Makefile bin/
@@ -76,10 +80,6 @@ bin/csvgrep: $(CSV_GREP_FILES) Makefile bin/
 
 bin/csvtokenizercounts: $(CSV_TOK_TEST_COUNT_FILES) Makefile bin/
 	$(CC) -o $@ $(LinkFlags) $(CFLAGS) $(CSV_TOK_TEST_COUNT_FILES)
-
-csvawk: bin/csvawk
-bin/csvawk: src/csvawk.sh bin/csvawkpipe bin/
-	cp src/csvawk.sh bin/csvawk
 
 bin/:
 	mkdir bin/
@@ -90,7 +90,7 @@ else
 LARGE_FILES=1
 endif
 
-test: test-csvgrep test-csvcut test-csvlook test-csvpipe test-csvunpipe test-csvawkpipe test-tokenizer
+test: test-csvgrep test-csvcut test-csvlook test-csvpipe test-csvunpipe test-csvawk test-tokenizer
 
 test-csvgrep: bin/csvgrep
 	cd test && ./runtest.sh csvgrep $(LARGE_FILES) $(DO_COVERAGE)
@@ -107,8 +107,8 @@ test-csvpipe: bin/csvpipe
 test-csvunpipe: bin/csvunpipe
 	cd test && ./runtest.sh csvunpipe $(LARGE_FILES) $(DO_COVERAGE)
 
-test-csvawkpipe: bin/csvawkpipe
-	cd test && ./runtest.sh csvawkpipe $(LARGE_FILES) $(DO_COVERAGE)
+test-csvawk: bin/csvawk
+	cd test && ./runtest.sh csvawk $(LARGE_FILES) $(DO_COVERAGE)
 
 test-tokenizer: bin/csvtokenizercounts
 	cd test && ./runtest.sh csvtokenizercounts $(LARGE_FILES) $(DO_COVERAGE)
@@ -116,6 +116,13 @@ test-tokenizer: bin/csvtokenizercounts
 test-all-sizes: 
 	 ./test/test-sizes.sh $(DO_COVERAGE)
 
+test-all-sizes-ci: 
+	 curl -s https://codecov.io/bash > /tmp/codecov.sh
+	 bash /tmp/codecov.sh
+	 ./test/test-sizes.sh $(DO_COVERAGE)
+	 bash /tmp/codecov.sh
+	 ./test/test-sizes.sh $(DO_COVERAGE) TEST_SLOW_PATH=1
+	 bash /tmp/codecov.sh
 
 
 prefix=/usr/local
@@ -125,7 +132,6 @@ install: all
 	install -m 0755 bin/csvlook $(prefix)/bin/csvlook
 	install -m 0755 bin/csvgrep $(prefix)/bin/csvgrep
 	install -m 0755 bin/csvawk $(prefix)/bin/csvawk
-	install -m 0755 bin/csvawkpipe $(prefix)/bin/csvawkpipe
 	install -m 0755 bin/csvpipe $(prefix)/bin/csvpipe
 	install -m 0755 bin/csvunpipe $(prefix)/bin/csvunpipe
 
