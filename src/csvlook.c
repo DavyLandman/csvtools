@@ -29,7 +29,6 @@ static struct {
 
     int column_count;
     int *column_sizes;
-    int *final_column_sizes;
 } config;
 
 static struct {
@@ -78,9 +77,6 @@ int main(int argc, char** argv) {
     if (config.column_sizes != NULL) {
         free(config.column_sizes);
     }
-    if (config.final_column_sizes != NULL) {
-        free(config.final_column_sizes);
-    }
     if (config.source != stdin) {
         fclose(config.source);
     }
@@ -126,7 +122,6 @@ static void print_help() {
 static void parse_config(int argc, char** argv) {
     config.separator = ',';
     config.column_sizes = NULL;
-    config.final_column_sizes = NULL;
     config.source = stdin;
 
     preconfig.max_width = 120;
@@ -142,8 +137,9 @@ static void parse_config(int argc, char** argv) {
                     config.separator = optarg[0];
                 break;
             case 'w':
-                preconfig.specified_widths = malloc(sizeof(char) * strlen(optarg) + 1);
+                preconfig.specified_widths = calloc(sizeof(char), strlen(optarg) + 1);
                 strcpy(preconfig.specified_widths, optarg);
+                break;
             case 'M':
                 preconfig.max_width = atoi(optarg);
                 break;
@@ -177,7 +173,6 @@ static void finish_config(size_t cells_found) {
     }
     config.column_count = (int)(current_cell - _cells);
     config.column_sizes = calloc(sizeof(int), config.column_count);
-    config.final_column_sizes = calloc(sizeof(int), config.column_count);
 
     const char* new_line = _cells[config.column_count-1].start + _cells[config.column_count - 1].length;
     config.newline[0] = new_line[0];
@@ -208,23 +203,23 @@ static void finish_config(size_t cells_found) {
     }
     column_idx = 0;
     LOG_D("%s\n", "Trying to parse specified widths");
-    char *token = strtok(preconfig.specified_widths, ",");
-    while (token != NULL) {
-        LOG_D("Got token %s\n", token);
-        if (strlen(token) > 0) {
+    char *token;
+    char *widths = preconfig.specified_widths;
+    while ((token = strsep(&widths, ",")) != NULL) {
+        if (token[0] != '\0' && strlen(token) > 0) {
             int len = atoi(token);
             if (len > 0) {
+                LOG_D("Overriding column %d to %d\n", column_idx, len);
                 config.column_sizes[column_idx] = len;
             }
         }
 
         column_idx++;
-        token = strtok(NULL, ",");
     }
 
     LOG_D("%s\n","Done finishing config calcs");
     for (int i = 0; i < config.column_count; i++) {
-        LOG_D("Column %d: %d\n", i, config.column_sizes[i]);
+        LOG_D("Column %d width: %d\n", i, config.column_sizes[i]);
     }
 }
 
@@ -235,7 +230,7 @@ static void output_cells(size_t cells_found, bool last_full) {
 
     while (current_cell < cell_end) {
         if (current_cell->start == NULL) {
-            fprintf(stdout, "%.*s", (int)config.newline_length, config.newline);
+            fwrite(config.newline, sizeof(char), (int)config.newline_length, stdout);
             column_idx = 0;
         }
         else {
@@ -243,9 +238,17 @@ static void output_cells(size_t cells_found, bool last_full) {
                 fprintf(stdout, "%-*s ", column_idx, "");
             }
             else {
-                fprintf(stdout, "%.*s", (int)current_cell->length, current_cell->start);
+                int printlen = (int)current_cell->length;
+                int elipse = 0;
+                if (printlen > config.column_sizes[column_idx]) {
+                  printlen = config.column_sizes[column_idx]-2;
+                  elipse = 1;
+                }
+                fprintf(stdout, "%.*s", printlen, current_cell->start);
+                if (elipse) {
+                  fprintf(stdout, "..");
+                } else
                 if ((int)current_cell->length < config.column_sizes[column_idx]) {
-                    //LOG_D("Attempting to pad col %d with %d\n", column_idx, config.column_sizes[column_idx] - (int)current_cell->length);
                     fprintf(stdout, "%*s", config.column_sizes[column_idx] - (int)current_cell->length, "");
                 }
                 fprintf(stdout, " ");
@@ -255,6 +258,5 @@ static void output_cells(size_t cells_found, bool last_full) {
         current_cell++;
     }
     if (last_full) {
-        /* TODO - print message for actual max vs detected */
     }
 }
