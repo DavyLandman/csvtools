@@ -28,15 +28,16 @@ endif
 
 CSV_GREP_FILES = src/csvgrep.c src/csv_tokenizer.c
 CSV_CUT_FILES = src/csvcut.c src/csv_tokenizer.c
+CSV_LOOK_FILES = src/csvlook.c src/csv_tokenizer.c
 CSV_TOK_TEST_COUNT_FILES = test/csv_tokenizer_counts.c src/csv_tokenizer.c
 CSV_PIPE_FILES = src/csvpipe.c
 CSV_UNPIPE_FILES = src/csvunpipe.c
 CSV_AWKPIPE_FILES = src/csvawkpipe.c
 BENCH_FILES = bench/runner.c bench/generate.c bench/deps/pcg-c-basic/pcg_basic.c
 
-.PHONY: all test clean test-csvgrep test-csvcut test-csvpipe test-csvunpipe test-all-sizes test-tokenizer install
+.PHONY: all test clean test-csvgrep test-csvcut test-csvlook test-csvpipe test-csvunpipe test-all-sizes test-tokenizer install
 
-all: bin/csvcut bin/csvgrep bin/csvpipe bin/csvunpipe bin/csvawkpipe bin/csvawk
+all: bin/csvcut bin/csvlook bin/csvgrep bin/csvpipe bin/csvunpipe bin/csvawkpipe bin/csvawk
 
 # yes, we recompile csv_tokenizer, it keeps the makefile simpler and it allows
 # the compiler to do some cross module optimizations :)
@@ -52,6 +53,10 @@ bench/deps/pcg-c-basic/pcg_basic.c:
 csvcut: bin/csvcut
 bin/csvcut: $(CSV_CUT_FILES) Makefile bin/
 	$(CC) -o $@ $(LinkFlags) $(CFLAGS) $(CSV_CUT_FILES) 
+
+csvlook: bin/csvlook
+bin/csvlook: $(CSV_LOOK_FILES) Makefile bin/
+	$(CC) -o $@ $(LinkFlags) $(CFLAGS) $(CSV_LOOK_FILES)
 
 csvpipe: bin/csvpipe
 bin/csvpipe: $(CSV_PIPE_FILES) Makefile bin/
@@ -85,7 +90,7 @@ else
 LARGE_FILES=1
 endif
 
-test: test-csvgrep test-csvcut test-csvpipe test-csvunpipe test-csvawkpipe test-tokenizer
+test: test-csvgrep test-csvcut test-csvlook test-csvpipe test-csvunpipe test-csvawkpipe test-tokenizer
 
 test-csvgrep: bin/csvgrep
 	cd test && ./runtest.sh csvgrep $(LARGE_FILES) $(DO_COVERAGE)
@@ -93,6 +98,9 @@ test-csvgrep: bin/csvgrep
 test-csvcut: bin/csvcut
 	cd test && ./runtest.sh csvcut $(LARGE_FILES) $(DO_COVERAGE)
 	
+test-csvlook: bin/csvlook
+	cd test && ./runtest.sh csvlook $(LARGE_FILES) $(DO_COVERAGE)
+
 test-csvpipe: bin/csvpipe
 	cd test && ./runtest.sh csvpipe $(LARGE_FILES) $(DO_COVERAGE)
 
@@ -114,6 +122,7 @@ prefix=/usr/local
     
 install: all
 	install -m 0755 bin/csvcut $(prefix)/bin/csvcut
+	install -m 0755 bin/csvlook $(prefix)/bin/csvlook
 	install -m 0755 bin/csvgrep $(prefix)/bin/csvgrep
 	install -m 0755 bin/csvawk $(prefix)/bin/csvawk
 	install -m 0755 bin/csvawkpipe $(prefix)/bin/csvawkpipe
