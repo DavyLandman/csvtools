@@ -1,0 +1,12 @@
+- name: cpp
+  production:
+    include:
+      - src/*.c
+      - src/*.h
+    exclude:
+      - test/*
+      - bench/*
+  test:
+    include:
+      - test/*
+      - bench/*
