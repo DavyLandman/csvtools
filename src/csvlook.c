@@ -235,7 +235,7 @@ static void output_cells(size_t cells_found, bool last_full) {
         }
         else {
             if (current_cell->length == 0) {
-                fprintf(stdout, "%-*s ", column_idx, "");
+                fprintf(stdout, "%-*s ", config.column_sizes[column_idx], "");
             }
             else {
                 int printlen = (int)current_cell->length;
