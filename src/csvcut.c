@@ -75,9 +75,6 @@ int main(int argc, char** argv) {
     if (config.source != stdin) {
         fclose(config.source);
     }
-    if (stdout != stdout) {
-        fclose(stdout);
-    }
     return 0;
 }
 
