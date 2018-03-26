@@ -289,7 +289,7 @@ static size_t finish_config(size_t cells_found) {
                         fprintf(stderr, "ERROR: Could not compile '%s': %s\n", half_config.patterns[pat], pcreErrorStr);
                         exit(1);
                     }
-                    config.patterns[c].extra = pcre_study(config.patterns[c].pattern, _have_jit ? PCRE_STUDY_JIT_COMPILE : 0, &pcreErrorStr);
+                    config.patterns[c].extra = pcre_study(config.patterns[c].pattern, PCRE_STUDY_EXTRA_NEEDED | ( _have_jit ? PCRE_STUDY_JIT_COMPILE : 0), &pcreErrorStr);
                     if(config.patterns[c].extra == NULL) {
                         fprintf(stderr, "ERROR: Could not study '%s': %s\n", half_config.patterns[pat], pcreErrorStr);
                         exit(1);
