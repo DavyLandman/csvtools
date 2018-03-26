@@ -111,11 +111,11 @@ test-all-sizes:
 
 test-all-sizes-ci: 
 	 curl -s https://codecov.io/bash > /tmp/codecov.sh
-	 bash /tmp/codecov.sh
+	 bash /tmp/codecov.sh -x "llvm-cov gcov"
 	 ./test/test-sizes.sh $(DO_COVERAGE)
-	 bash /tmp/codecov.sh
+	 bash /tmp/codecov.sh -x "llvm-cov gcov"
 	 ./test/test-sizes.sh $(DO_COVERAGE) TEST_SLOW_PATH=1
-	 bash /tmp/codecov.sh
+	 bash /tmp/codecov.sh -x "llvm-cov gcov"
 
 
 
