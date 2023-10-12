@@ -144,6 +144,9 @@ static void print_help() {
     fprintf(stderr, "-s ,\n");
     fprintf(stderr, "\tWhich character to use as separator (default is ,)\n");
     fprintf(stderr, "-p column/pattern/\n");
+    fprintf(stderr, "\tColumn is : \n");
+    fprintf(stderr, "\t\t- the column name as specified in header line \n");
+    fprintf(stderr, "\t\t- or the column index prefixed with # (eg: #0) \n");
     fprintf(stderr, "\tMultiple -p are allowed, they work as an AND \n");
     fprintf(stderr, "-i\n");
     fprintf(stderr, "\tuse case insensitive matching\n");
@@ -279,26 +282,37 @@ static size_t finish_config(size_t cells_found) {
             column = unquote(column, &length);
         }
         for (size_t pat = 0;  pat < half_config.n_patterns; pat++) {
-            if (!used[pat] && length == half_config.column_lengths[pat]) {
-                if (strncasecmp(column, half_config.columns[pat], half_config.column_lengths[pat])==0) {
-                    used[pat] = true;
-                    LOG_V("Adding pattern %s for column: %s (%d)\n", half_config.patterns[pat], half_config.columns[pat],c);
-                    // we have found the column
-                    const char *pcreErrorStr;
-                    int pcreErrorOffset;
-                    config.patterns[c].pattern = pcre_compile(half_config.patterns[pat], PCRE_DOLLAR_ENDONLY |  PCRE_DOTALL | PCRE_NO_UTF8_CHECK | (config.case_insensitive ? PCRE_CASELESS : 0), &pcreErrorStr, &pcreErrorOffset, NULL); 
-                    if(config.patterns[c].pattern == NULL) {
-                        fprintf(stderr, "ERROR: Could not compile '%s': %s\n", half_config.patterns[pat], pcreErrorStr);
-                        exit(1);
-                    }
-                    config.patterns[c].extra = pcre_study(config.patterns[c].pattern,(_have_jit ? PCRE_STUDY_JIT_COMPILE : 0), &pcreErrorStr);
-                    if(config.patterns[c].extra == NULL && pcreErrorStr != NULL) {
-                        fprintf(stderr, "ERROR: Could not study '%s': %s\n", half_config.patterns[pat], pcreErrorStr);
-                        exit(1);
-                    }
-                    break;
+            if (used[pat]) {
+                continue;
+            }
+            if (length != half_config.column_lengths[pat] || strncasecmp(column, half_config.columns[pat], half_config.column_lengths[pat])) {
+                char *endptr;
+                long int column_index;
+                if (*half_config.columns[pat] != '#') {
+                    continue;
+                }
+                column_index = strtol(half_config.columns[pat] + 1, &endptr, 10);
+                if (*endptr || c != column_index) {
+                    continue;
                 }
             }
+
+            used[pat] = true;
+            LOG_V("Adding pattern %s for column: %s (%d)\n", half_config.patterns[pat], half_config.columns[pat],c);
+            // we have found the column
+            const char *pcreErrorStr;
+            int pcreErrorOffset;
+            config.patterns[c].pattern = pcre_compile(half_config.patterns[pat], PCRE_DOLLAR_ENDONLY |  PCRE_DOTALL | PCRE_NO_UTF8_CHECK | (config.case_insensitive ? PCRE_CASELESS : 0), &pcreErrorStr, &pcreErrorOffset, NULL); 
+            if(config.patterns[c].pattern == NULL) {
+                fprintf(stderr, "ERROR: Could not compile '%s': %s\n", half_config.patterns[pat], pcreErrorStr);
+                exit(1);
+            }
+            config.patterns[c].extra = pcre_study(config.patterns[c].pattern,(_have_jit ? PCRE_STUDY_JIT_COMPILE : 0), &pcreErrorStr);
+            if(config.patterns[c].extra == NULL && pcreErrorStr != NULL) {
+                fprintf(stderr, "ERROR: Could not study '%s': %s\n", half_config.patterns[pat], pcreErrorStr);
+                exit(1);
+            }
+            break;
         }
     }
 

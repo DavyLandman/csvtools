@@ -122,11 +122,11 @@ test-all-sizes-ci:
 prefix=/usr/local
     
 install: all
-	install -m 0755 bin/csvcut $(prefix)/bin/csvcut
-	install -m 0755 bin/csvgrep $(prefix)/bin/csvgrep
-	install -m 0755 bin/csvawk $(prefix)/bin/csvawk
-	install -m 0755 bin/csvpipe $(prefix)/bin/csvpipe
-	install -m 0755 bin/csvunpipe $(prefix)/bin/csvunpipe
+	install -m 0755 bin/csvcut $(DESTDIR)$(prefix)/bin/csvcut
+	install -m 0755 bin/csvgrep $(DESTDIR)$(prefix)/bin/csvgrep
+	install -m 0755 bin/csvawk $(DESTDIR)$(prefix)/bin/csvawk
+	install -m 0755 bin/csvpipe $(DESTDIR)$(prefix)/bin/csvpipe
+	install -m 0755 bin/csvunpipe $(DESTDIR)$(prefix)/bin/csvunpipe
 
 clean:
 	rm -rf bin/*
