@@ -150,7 +150,10 @@ static void parse_config(int argc, char** argv) {
                 one_at_a_time = true;
                 break;
             case 's': 
-                config.separator = optarg[0];
+                if (strcmp(optarg, "\\t") == 0)
+                    config.separator = '\t';
+                else
+                    config.separator = optarg[0];
                 break;
             case 'k':
             case 'd':

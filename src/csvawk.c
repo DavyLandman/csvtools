@@ -73,7 +73,10 @@ static void parse_config(int argc, char** argv) {
     while ((c = getopt (argc, argv, "s:dp")) != -1) {
         switch (c) {
             case 's': 
-                config.separator = optarg[0];
+                if (strcmp(optarg, "\\t") == 0)
+                    config.separator = '\t';
+                else
+                    config.separator = optarg[0];
                 break;
             case 'd':
                 config.drop_header = true;
