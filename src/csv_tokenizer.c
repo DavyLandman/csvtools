@@ -70,7 +70,7 @@ static void print_current_line(const char* restrict current_char,const char* res
 
     // copy string such that we can put a \0 at the end
     size_t line_length = end-start;
-    char* printable_string = calloc(sizeof(char), line_length + 1);
+    char* printable_string = calloc(line_length + 1, sizeof(char));
     memcpy(printable_string, start, line_length);
     printable_string[line_length] = '\0';
     fprintf(stderr, "Current line: %s\n", printable_string);
