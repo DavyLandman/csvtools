@@ -17,3 +17,7 @@ jobs:
       run: make
     - name: test
       run: make test
+
+    env:
+      # https://github.com/DavyLandman/csvtools/issues/20
+      CFLAGS: -Wp,-D_FORTIFY_SOURCE=3
