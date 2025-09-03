@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - run: sudo apt install -y libpcre3 libpcre3-dev
     - uses: actions/checkout@v3
     - name: compile
       run: make
