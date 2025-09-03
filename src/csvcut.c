@@ -91,7 +91,7 @@ static void debug_cells(size_t total) {
             LOG_V("Cell %zu : \n", (size_t)(current_cell - _cells));
         }
         else {
-            char* s = calloc(sizeof(char), current_cell->length + 1);
+            char* s = calloc(current_cell->length + 1, sizeof(char));
             s[current_cell->length] = '\0';
             memcpy(s, current_cell->start, current_cell->length);
             LOG_V("Cell %zu : %s\n", (size_t)(current_cell - _cells), s);
@@ -289,7 +289,7 @@ static void finish_config(size_t cells_found) {
         config.newline_length = 2;
     }
 
-    config.keep = calloc(sizeof(bool), config.column_count);
+    config.keep = calloc(config.column_count, sizeof(bool));
     for (int c = 0; c < config.column_count; c++) {
         config.keep[c] =  false;
     }

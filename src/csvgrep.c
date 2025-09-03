@@ -125,7 +125,7 @@ static void debug_cells(size_t total) {
             LOG_V("Cell %zu : \n", (size_t)(current_cell - _cells));
         }
         else {
-            char* s = calloc(sizeof(char), current_cell->length + 1);
+            char* s = calloc(current_cell->length + 1, sizeof(char));
             s[current_cell->length] = '\0';
             memcpy(s, current_cell->start, current_cell->length);
             LOG_V("Cell %zu : %s\n", (size_t)(current_cell - _cells), s);
@@ -266,9 +266,9 @@ static size_t finish_config(size_t cells_found) {
         fwrite(config.newline, sizeof(char), config.newline_length, stdout);
     }
 
-    bool* used = calloc(sizeof(bool), half_config.n_patterns);
+    bool* used = calloc(half_config.n_patterns, sizeof(bool));
     memset(used, 0, sizeof(bool) * half_config.n_patterns);
-    config.patterns = calloc(sizeof(Regex),config.column_count);
+    config.patterns = calloc(config.column_count, sizeof(Regex));
     memset(config.patterns, 0, sizeof(Regex) * config.column_count);
     for (int c = 0; c < config.column_count; c++) {
         const char* column = _cells[c].start;
